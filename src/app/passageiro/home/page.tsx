@@ -43,43 +43,55 @@ export default function PassageiroHomePage() {
     router.push("/");
   }
 
-  async function carregarDados() {
+  async function carregarDados(opts?: { silent?: boolean }) {
     const pid = localStorage.getItem("passageiroId");
     if (!pid) {
       router.push("/");
       return;
     }
 
-    setLoading(true);
-    setMsg(null);
+    if (!opts?.silent) {
+      setLoading(true);
+      setMsg(null);
+    }
 
     try {
       const [pRes, tRes] = await Promise.all([
-        fetch(`/api/passageiros/${pid}`),
-        fetch(`/api/taxistas?disponivel=1`),
+        fetch(`/api/passageiros/${pid}`, { cache: "no-store" }),
+        fetch(`/api/taxistas?disponivel=1`, { cache: "no-store" }),
       ]);
 
       const pData = await pRes.json().catch(() => null);
       const tData = await tRes.json().catch(() => null);
 
-      if (pRes.ok) setPassageiroNome(pData?.passageiro?.nome || "");
+      if (pRes.ok) {
+        setPassageiroNome(pData?.passageiro?.nome || "");
+      }
 
       if (tRes.ok) {
         const list = (tData?.taxistas || []) as TaxistaItem[];
         setTaxistas(list);
 
-        // se o selecionado sumiu (ficou indisponível), limpa seleção
-        if (selectedTaxista && !list.find((x) => x.id === selectedTaxista.id)) {
-          setSelectedTaxista(null);
+        if (selectedTaxista) {
+          const atualizado = list.find((x) => x.id === selectedTaxista.id);
+          if (!atualizado) {
+            setSelectedTaxista(null);
+          } else {
+            setSelectedTaxista(atualizado);
+          }
         }
       } else {
         setTaxistas([]);
         setSelectedTaxista(null);
       }
     } catch {
-      setMsg({ type: "err", text: "Erro de rede ao carregar dados." });
+      if (!opts?.silent) {
+        setMsg({ type: "err", text: "Erro de rede ao carregar dados." });
+      }
     } finally {
-      setLoading(false);
+      if (!opts?.silent) {
+        setLoading(false);
+      }
     }
   }
 
@@ -89,9 +101,20 @@ export default function PassageiroHomePage() {
       router.push("/");
       return;
     }
+
     carregarDados();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ✅ polling automático do mapa/lista
+  useEffect(() => {
+    const t = setInterval(() => {
+      carregarDados({ silent: true });
+    }, 4000);
+
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTaxista?.id]);
 
   async function solicitarViagem() {
     setMsg(null);
@@ -188,7 +211,7 @@ export default function PassageiroHomePage() {
               </div>
 
               <button
-                onClick={carregarDados}
+                onClick={() => carregarDados()}
                 className="text-xs px-3 py-2 rounded-xl bg-[#1a1f2e] border border-gray-800 text-gray-200 hover:border-gray-700 transition-colors"
                 disabled={loading}
               >
@@ -237,6 +260,11 @@ export default function PassageiroHomePage() {
                         {selectedTaxista.moto
                           ? `${selectedTaxista.moto.nomeMoto} • ${selectedTaxista.moto.matricula}`
                           : "Sem moto"}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {selectedTaxista.lat != null && selectedTaxista.lng != null
+                          ? `Lat: ${selectedTaxista.lat} • Lng: ${selectedTaxista.lng}`
+                          : "Sem coordenadas ainda"}
                       </div>
                     </div>
 
