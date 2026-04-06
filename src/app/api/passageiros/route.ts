@@ -6,15 +6,29 @@ export async function POST(req: Request) {
     const body = await req.json();
 
     const nome = String(body?.nome ?? "").trim();
+    const apelido = String(body?.apelido ?? "").trim();
+    const documento = String(body?.documento ?? "").trim();
     const email = String(body?.email ?? "").trim().toLowerCase();
     const senha = String(body?.senha ?? "").trim();
 
-    if (nome.length < 2 || email.length < 4 || senha.length < 4) {
+    if (
+      nome.length < 2 ||
+      apelido.length < 2 ||
+      documento.length < 3 ||
+      email.length < 4 ||
+      senha.length < 4
+    ) {
       return NextResponse.json({ error: "Campos inválidos." }, { status: 400 });
     }
 
     const created = await prisma.passageiro.create({
-      data: { nome, email, senha }, // MVP: senha simples
+      data: {
+        nome,
+        apelido,
+        documento,
+        email,
+        senha,
+      },
     });
 
     return NextResponse.json(
@@ -23,26 +37,48 @@ export async function POST(req: Request) {
         passageiro: {
           id: created.id,
           nome: created.nome,
+          apelido: created.apelido,
+          documento: created.documento,
           email: created.email,
           criadoEm: created.criadoEm,
         },
       },
       { status: 201 }
     );
-  } catch (error) {
-  // Expose the hidden cause
-  const cause = (error as any)?.cause;
-  console.error("ERRO AO CADASTRAR PASSAGEIRO:", error);
-  console.error("CAUSA REAL:", cause);
-  console.error("CAUSA DETALHADA:", JSON.stringify(cause, Object.getOwnPropertyNames(cause ?? {})));
+  } catch (error: any) {
+    console.error("ERRO AO CADASTRAR PASSAGEIRO:", error);
 
-  return NextResponse.json(
-    {
-      error: "Não foi possível cadastrar passageiro.",
-      detalhe: error instanceof Error ? error.message : String(error),
-      causa: cause ? String(cause) : undefined,
-    },
-    { status: 500 }
-  );
-}
+    if (error?.code === "P2002") {
+      const target = Array.isArray(error?.meta?.target)
+        ? error.meta.target.join(", ")
+        : "";
+
+      if (target.includes("documento")) {
+        return NextResponse.json(
+          { error: "Já existe um passageiro com este documento." },
+          { status: 409 }
+        );
+      }
+
+      if (target.includes("email")) {
+        return NextResponse.json(
+          { error: "Já existe um passageiro com este e-mail." },
+          { status: 409 }
+        );
+      }
+
+      return NextResponse.json(
+        { error: "Já existe um registo com estes dados." },
+        { status: 409 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        error: "Não foi possível cadastrar passageiro.",
+        detalhe: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
+  }
 }

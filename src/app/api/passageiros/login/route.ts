@@ -34,7 +34,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       ok: true,
-      passageiro: { id: passageiro.id, nome: passageiro.nome, email: passageiro.email },
+      passageiro: {
+        id: passageiro.id,
+        nome: passageiro.nome,
+        apelido: passageiro.apelido,
+        documento: passageiro.documento,
+        email: passageiro.email,
+      },
     });
   } catch {
     return NextResponse.json({ error: "Erro no login." }, { status: 500 });

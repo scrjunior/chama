@@ -27,6 +27,8 @@ export type AggregatePassageiro = {
 export type PassageiroMinAggregateOutputType = {
   id: string | null
   nome: string | null
+  apelido: string | null
+  documento: string | null
   email: string | null
   senha: string | null
   criadoEm: Date | null
@@ -35,6 +37,8 @@ export type PassageiroMinAggregateOutputType = {
 export type PassageiroMaxAggregateOutputType = {
   id: string | null
   nome: string | null
+  apelido: string | null
+  documento: string | null
   email: string | null
   senha: string | null
   criadoEm: Date | null
@@ -43,6 +47,8 @@ export type PassageiroMaxAggregateOutputType = {
 export type PassageiroCountAggregateOutputType = {
   id: number
   nome: number
+  apelido: number
+  documento: number
   email: number
   senha: number
   criadoEm: number
@@ -53,6 +59,8 @@ export type PassageiroCountAggregateOutputType = {
 export type PassageiroMinAggregateInputType = {
   id?: true
   nome?: true
+  apelido?: true
+  documento?: true
   email?: true
   senha?: true
   criadoEm?: true
@@ -61,6 +69,8 @@ export type PassageiroMinAggregateInputType = {
 export type PassageiroMaxAggregateInputType = {
   id?: true
   nome?: true
+  apelido?: true
+  documento?: true
   email?: true
   senha?: true
   criadoEm?: true
@@ -69,6 +79,8 @@ export type PassageiroMaxAggregateInputType = {
 export type PassageiroCountAggregateInputType = {
   id?: true
   nome?: true
+  apelido?: true
+  documento?: true
   email?: true
   senha?: true
   criadoEm?: true
@@ -150,6 +162,8 @@ export type passageiroGroupByArgs<ExtArgs extends runtime.Types.Extensions.Inter
 export type PassageiroGroupByOutputType = {
   id: string
   nome: string
+  apelido: string
+  documento: string
   email: string
   senha: string
   criadoEm: Date
@@ -179,6 +193,8 @@ export type passageiroWhereInput = {
   NOT?: Prisma.passageiroWhereInput | Prisma.passageiroWhereInput[]
   id?: Prisma.StringFilter<"passageiro"> | string
   nome?: Prisma.StringFilter<"passageiro"> | string
+  apelido?: Prisma.StringFilter<"passageiro"> | string
+  documento?: Prisma.StringFilter<"passageiro"> | string
   email?: Prisma.StringFilter<"passageiro"> | string
   senha?: Prisma.StringFilter<"passageiro"> | string
   criadoEm?: Prisma.DateTimeFilter<"passageiro"> | Date | string
@@ -188,6 +204,8 @@ export type passageiroWhereInput = {
 export type passageiroOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   nome?: Prisma.SortOrder
+  apelido?: Prisma.SortOrder
+  documento?: Prisma.SortOrder
   email?: Prisma.SortOrder
   senha?: Prisma.SortOrder
   criadoEm?: Prisma.SortOrder
@@ -197,19 +215,23 @@ export type passageiroOrderByWithRelationInput = {
 
 export type passageiroWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  documento?: string
   email?: string
   AND?: Prisma.passageiroWhereInput | Prisma.passageiroWhereInput[]
   OR?: Prisma.passageiroWhereInput[]
   NOT?: Prisma.passageiroWhereInput | Prisma.passageiroWhereInput[]
   nome?: Prisma.StringFilter<"passageiro"> | string
+  apelido?: Prisma.StringFilter<"passageiro"> | string
   senha?: Prisma.StringFilter<"passageiro"> | string
   criadoEm?: Prisma.DateTimeFilter<"passageiro"> | Date | string
   viagem?: Prisma.ViagemListRelationFilter
-}, "id" | "email">
+}, "id" | "documento" | "email">
 
 export type passageiroOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   nome?: Prisma.SortOrder
+  apelido?: Prisma.SortOrder
+  documento?: Prisma.SortOrder
   email?: Prisma.SortOrder
   senha?: Prisma.SortOrder
   criadoEm?: Prisma.SortOrder
@@ -224,6 +246,8 @@ export type passageiroScalarWhereWithAggregatesInput = {
   NOT?: Prisma.passageiroScalarWhereWithAggregatesInput | Prisma.passageiroScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"passageiro"> | string
   nome?: Prisma.StringWithAggregatesFilter<"passageiro"> | string
+  apelido?: Prisma.StringWithAggregatesFilter<"passageiro"> | string
+  documento?: Prisma.StringWithAggregatesFilter<"passageiro"> | string
   email?: Prisma.StringWithAggregatesFilter<"passageiro"> | string
   senha?: Prisma.StringWithAggregatesFilter<"passageiro"> | string
   criadoEm?: Prisma.DateTimeWithAggregatesFilter<"passageiro"> | Date | string
@@ -232,6 +256,8 @@ export type passageiroScalarWhereWithAggregatesInput = {
 export type passageiroCreateInput = {
   id?: string
   nome: string
+  apelido: string
+  documento: string
   email: string
   senha: string
   criadoEm?: Date | string
@@ -241,6 +267,8 @@ export type passageiroCreateInput = {
 export type passageiroUncheckedCreateInput = {
   id?: string
   nome: string
+  apelido: string
+  documento: string
   email: string
   senha: string
   criadoEm?: Date | string
@@ -250,6 +278,8 @@ export type passageiroUncheckedCreateInput = {
 export type passageiroUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   nome?: Prisma.StringFieldUpdateOperationsInput | string
+  apelido?: Prisma.StringFieldUpdateOperationsInput | string
+  documento?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   senha?: Prisma.StringFieldUpdateOperationsInput | string
   criadoEm?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -259,6 +289,8 @@ export type passageiroUpdateInput = {
 export type passageiroUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   nome?: Prisma.StringFieldUpdateOperationsInput | string
+  apelido?: Prisma.StringFieldUpdateOperationsInput | string
+  documento?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   senha?: Prisma.StringFieldUpdateOperationsInput | string
   criadoEm?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -268,6 +300,8 @@ export type passageiroUncheckedUpdateInput = {
 export type passageiroCreateManyInput = {
   id?: string
   nome: string
+  apelido: string
+  documento: string
   email: string
   senha: string
   criadoEm?: Date | string
@@ -276,6 +310,8 @@ export type passageiroCreateManyInput = {
 export type passageiroUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   nome?: Prisma.StringFieldUpdateOperationsInput | string
+  apelido?: Prisma.StringFieldUpdateOperationsInput | string
+  documento?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   senha?: Prisma.StringFieldUpdateOperationsInput | string
   criadoEm?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -284,6 +320,8 @@ export type passageiroUpdateManyMutationInput = {
 export type passageiroUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   nome?: Prisma.StringFieldUpdateOperationsInput | string
+  apelido?: Prisma.StringFieldUpdateOperationsInput | string
+  documento?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   senha?: Prisma.StringFieldUpdateOperationsInput | string
   criadoEm?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -298,6 +336,8 @@ export type passageiroOrderByRelevanceInput = {
 export type passageiroCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   nome?: Prisma.SortOrder
+  apelido?: Prisma.SortOrder
+  documento?: Prisma.SortOrder
   email?: Prisma.SortOrder
   senha?: Prisma.SortOrder
   criadoEm?: Prisma.SortOrder
@@ -306,6 +346,8 @@ export type passageiroCountOrderByAggregateInput = {
 export type passageiroMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   nome?: Prisma.SortOrder
+  apelido?: Prisma.SortOrder
+  documento?: Prisma.SortOrder
   email?: Prisma.SortOrder
   senha?: Prisma.SortOrder
   criadoEm?: Prisma.SortOrder
@@ -314,6 +356,8 @@ export type passageiroMaxOrderByAggregateInput = {
 export type passageiroMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   nome?: Prisma.SortOrder
+  apelido?: Prisma.SortOrder
+  documento?: Prisma.SortOrder
   email?: Prisma.SortOrder
   senha?: Prisma.SortOrder
   criadoEm?: Prisma.SortOrder
@@ -341,6 +385,8 @@ export type passageiroUpdateOneRequiredWithoutViagemNestedInput = {
 export type passageiroCreateWithoutViagemInput = {
   id?: string
   nome: string
+  apelido: string
+  documento: string
   email: string
   senha: string
   criadoEm?: Date | string
@@ -349,6 +395,8 @@ export type passageiroCreateWithoutViagemInput = {
 export type passageiroUncheckedCreateWithoutViagemInput = {
   id?: string
   nome: string
+  apelido: string
+  documento: string
   email: string
   senha: string
   criadoEm?: Date | string
@@ -373,6 +421,8 @@ export type passageiroUpdateToOneWithWhereWithoutViagemInput = {
 export type passageiroUpdateWithoutViagemInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   nome?: Prisma.StringFieldUpdateOperationsInput | string
+  apelido?: Prisma.StringFieldUpdateOperationsInput | string
+  documento?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   senha?: Prisma.StringFieldUpdateOperationsInput | string
   criadoEm?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -381,6 +431,8 @@ export type passageiroUpdateWithoutViagemInput = {
 export type passageiroUncheckedUpdateWithoutViagemInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   nome?: Prisma.StringFieldUpdateOperationsInput | string
+  apelido?: Prisma.StringFieldUpdateOperationsInput | string
+  documento?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   senha?: Prisma.StringFieldUpdateOperationsInput | string
   criadoEm?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -420,6 +472,8 @@ export type PassageiroCountOutputTypeCountViagemArgs<ExtArgs extends runtime.Typ
 export type passageiroSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   nome?: boolean
+  apelido?: boolean
+  documento?: boolean
   email?: boolean
   senha?: boolean
   criadoEm?: boolean
@@ -432,12 +486,14 @@ export type passageiroSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
 export type passageiroSelectScalar = {
   id?: boolean
   nome?: boolean
+  apelido?: boolean
+  documento?: boolean
   email?: boolean
   senha?: boolean
   criadoEm?: boolean
 }
 
-export type passageiroOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "nome" | "email" | "senha" | "criadoEm", ExtArgs["result"]["passageiro"]>
+export type passageiroOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "nome" | "apelido" | "documento" | "email" | "senha" | "criadoEm", ExtArgs["result"]["passageiro"]>
 export type passageiroInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   viagem?: boolean | Prisma.passageiro$viagemArgs<ExtArgs>
   _count?: boolean | Prisma.PassageiroCountOutputTypeDefaultArgs<ExtArgs>
@@ -451,6 +507,8 @@ export type $passageiroPayload<ExtArgs extends runtime.Types.Extensions.Internal
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     nome: string
+    apelido: string
+    documento: string
     email: string
     senha: string
     criadoEm: Date
@@ -826,6 +884,8 @@ export interface Prisma__passageiroClient<T, Null = never, ExtArgs extends runti
 export interface passageiroFieldRefs {
   readonly id: Prisma.FieldRef<"passageiro", 'String'>
   readonly nome: Prisma.FieldRef<"passageiro", 'String'>
+  readonly apelido: Prisma.FieldRef<"passageiro", 'String'>
+  readonly documento: Prisma.FieldRef<"passageiro", 'String'>
   readonly email: Prisma.FieldRef<"passageiro", 'String'>
   readonly senha: Prisma.FieldRef<"passageiro", 'String'>
   readonly criadoEm: Prisma.FieldRef<"passageiro", 'DateTime'>

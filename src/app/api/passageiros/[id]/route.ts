@@ -14,6 +14,7 @@ export async function GET(
     }
 
     const passageiro = await prisma.passageiro.findUnique({ where: { id: passageiroId } });
+
     if (!passageiro) {
       return NextResponse.json({ error: "Passageiro não encontrado." }, { status: 404 });
     }
@@ -23,6 +24,8 @@ export async function GET(
       passageiro: {
         id: passageiro.id,
         nome: passageiro.nome,
+        apelido: passageiro.apelido,
+        documento: passageiro.documento,
         email: passageiro.email,
         criadoEm: passageiro.criadoEm,
       },

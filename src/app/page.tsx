@@ -13,6 +13,8 @@ export default function PassageiroAuthPage() {
   const [showPass, setShowPass] = useState(false);
 
   const [nome, setNome] = useState("");
+  const [apelido, setApelido] = useState("");
+  const [documento, setDocumento] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
 
@@ -22,9 +24,19 @@ export default function PassageiroAuthPage() {
   const canSubmit = useMemo(() => {
     const e = email.trim();
     const s = senha.trim();
-    if (mode === "cadastro") return nome.trim().length >= 2 && e.length >= 4 && s.length >= 4;
+
+    if (mode === "cadastro") {
+      return (
+        nome.trim().length >= 2 &&
+        apelido.trim().length >= 2 &&
+        documento.trim().length >= 3 &&
+        e.length >= 4 &&
+        s.length >= 4
+      );
+    }
+
     return e.length >= 4 && s.length >= 4;
-  }, [mode, nome, email, senha]);
+  }, [mode, nome, apelido, documento, email, senha]);
 
   async function submit() {
     setMsg(null);
@@ -32,6 +44,8 @@ export default function PassageiroAuthPage() {
     const e = email.trim().toLowerCase();
     const s = senha.trim();
     const n = nome.trim();
+    const a = apelido.trim();
+    const d = documento.trim();
 
     if (!canSubmit) {
       setMsg({ type: "err", text: "Campos inválidos." });
@@ -44,8 +58,15 @@ export default function PassageiroAuthPage() {
         const res = await fetch("/api/passageiros", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nome: n, email: e, senha: s }),
+          body: JSON.stringify({
+            nome: n,
+            apelido: a,
+            documento: d,
+            email: e,
+            senha: s,
+          }),
         });
+
         const data = await res.json().catch(() => null);
 
         if (!res.ok) {
@@ -61,6 +82,7 @@ export default function PassageiroAuthPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: e, senha: s }),
         });
+
         const data = await res.json().catch(() => null);
 
         if (!res.ok) {
@@ -92,7 +114,10 @@ export default function PassageiroAuthPage() {
         }
       `}</style>
 
-      <div className="min-h-screen w-full flex items-center justify-center font-body" style={{ background: "#0f1117" }}>
+      <div
+        className="min-h-screen w-full flex items-center justify-center font-body"
+        style={{ background: "#0f1117" }}
+      >
         <div className="w-full max-w-sm min-h-screen sm:min-h-0 sm:rounded-3xl overflow-hidden flex flex-col bg-[#111318]">
           <div
             className="flex flex-col items-center pt-16 pb-10 px-6"
@@ -124,7 +149,9 @@ export default function PassageiroAuthPage() {
               </svg>
             </div>
 
-            <h1 className="font-display font-bold text-white text-2xl tracking-wide">Chama-Moto</h1>
+            <h1 className="font-display font-bold text-white text-2xl tracking-wide">
+              Chama-Moto
+            </h1>
             <p className="text-gray-500 text-sm mt-1">A sua corrida, no seu ritmo</p>
           </div>
 
@@ -164,16 +191,44 @@ export default function PassageiroAuthPage() {
 
           <div className="flex flex-col gap-4 px-6 pt-6 pb-8">
             {mode === "cadastro" && (
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-gray-500 font-body">Nome completo</label>
-                <input
-                  type="text"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  placeholder="Maria Antónia"
-                  className="w-full bg-[#1a1f2e] border border-gray-700 focus:border-yellow-400 rounded-xl px-4 py-3.5 text-white text-sm font-body outline-none transition-colors placeholder:text-gray-600"
-                />
-              </div>
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-500 font-body">Nome</label>
+                    <input
+                      type="text"
+                      value={nome}
+                      onChange={(e) => setNome(e.target.value)}
+                      placeholder="Maria"
+                      className="w-full bg-[#1a1f2e] border border-gray-700 focus:border-yellow-400 rounded-xl px-4 py-3.5 text-white text-sm font-body outline-none transition-colors placeholder:text-gray-600"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-500 font-body">Apelido</label>
+                    <input
+                      type="text"
+                      value={apelido}
+                      onChange={(e) => setApelido(e.target.value)}
+                      placeholder="Antónia"
+                      className="w-full bg-[#1a1f2e] border border-gray-700 focus:border-yellow-400 rounded-xl px-4 py-3.5 text-white text-sm font-body outline-none transition-colors placeholder:text-gray-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-500 font-body">
+                    Documento de Identificação
+                  </label>
+                  <input
+                    type="text"
+                    value={documento}
+                    onChange={(e) => setDocumento(e.target.value)}
+                    placeholder="BI / Passaporte / Carta"
+                    className="w-full bg-[#1a1f2e] border border-gray-700 focus:border-yellow-400 rounded-xl px-4 py-3.5 text-white text-sm font-body outline-none transition-colors placeholder:text-gray-600"
+                  />
+                </div>
+              </>
             )}
 
             <div className="flex flex-col gap-1">

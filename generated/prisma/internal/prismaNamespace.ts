@@ -724,6 +724,8 @@ export type MotoScalarFieldEnum = (typeof MotoScalarFieldEnum)[keyof typeof Moto
 export const PassageiroScalarFieldEnum = {
   id: 'id',
   nome: 'nome',
+  apelido: 'apelido',
+  documento: 'documento',
   email: 'email',
   senha: 'senha',
   criadoEm: 'criadoEm'
@@ -784,6 +786,8 @@ export type motoOrderByRelevanceFieldEnum = (typeof motoOrderByRelevanceFieldEnu
 export const passageiroOrderByRelevanceFieldEnum = {
   id: 'id',
   nome: 'nome',
+  apelido: 'apelido',
+  documento: 'documento',
   email: 'email',
   senha: 'senha'
 } as const

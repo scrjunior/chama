@@ -5,7 +5,6 @@ generator client {
 
 datasource db {
   provider = "mysql"
-  
 }
 
 model moto {
@@ -18,12 +17,14 @@ model moto {
 }
 
 model passageiro {
-  id       String   @id @default(cuid())
-  nome     String
-  email    String   @unique(map: "Passageiro_email_key")
-  senha    String
-  criadoEm DateTime @default(now())
-  viagem   viagem[]
+  id        String   @id @default(cuid())
+  nome      String
+  apelido   String
+  documento String   @unique(map: "Passageiro_documento_key")
+  email     String   @unique(map: "Passageiro_email_key")
+  senha     String
+  criadoEm  DateTime @default(now())
+  viagem    viagem[]
 }
 
 model taxista {
