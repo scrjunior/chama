@@ -123,7 +123,7 @@ export default function TaxistaHomePage() {
         gpsWatchIdRef.current = navigator.geolocation.watchPosition(
           (p) => {
             const now = Date.now();
-            if (now - lastGpsSentAtRef.current < 5000) return;
+            if (now - lastGpsSentAtRef.current < 10000) return;
             lastGpsSentAtRef.current = now;
 
             enviarLocalizacao(
@@ -452,7 +452,7 @@ export default function TaxistaHomePage() {
 
     const t = setInterval(() => {
       carregarChamadas({ silent: true });
-    }, 1000);
+    }, 15000);
 
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -518,193 +518,154 @@ export default function TaxistaHomePage() {
         </header>
 
         <main className="max-w-md mx-auto px-4 py-5 pb-28">
-          {newCallCount > 0 ? (
-            <div className="mb-4 rounded-2xl border border-yellow-400/30 bg-yellow-400/10 px-4 py-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-yellow-300">
-                    Nova chamada recebida ({newCallCount})
-                  </div>
-                  <div className="text-xs text-gray-400 mt-0.5">Verifique a seção “Chamadas”.</div>
+          <section className="rounded-2xl border border-gray-800 bg-[#111318] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold">Estado</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Controle se você aparece para os passageiros.
                 </div>
+              </div>
+
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setNewCallCount(0)}
-                  className="text-xs px-3 py-2 rounded-xl bg-[#1a1f2e] border border-gray-800 text-gray-200 hover:border-gray-700 transition-colors"
+                  disabled={savingStatus || status === "disponivel"}
+                  onClick={() => definirDisponibilidade("disponivel")}
+                  className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
+                    status === "disponivel"
+                      ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/20"
+                      : "bg-[#1a1f2e] text-gray-200 border-gray-800 hover:border-gray-700"
+                  }`}
                 >
-                  Ok
+                  Ficar disponível
+                </button>
+
+                <button
+                  disabled={savingStatus || status === "indisponivel"}
+                  onClick={() => definirDisponibilidade("indisponivel")}
+                  className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
+                    status === "indisponivel"
+                      ? "bg-red-500/15 text-red-300 border-red-500/20"
+                      : "bg-[#1a1f2e] text-gray-200 border-gray-800 hover:border-gray-700"
+                  }`}
+                >
+                  Parar
                 </button>
               </div>
-            </div>
-          ) : null}
-
-          <section className="rounded-2xl border border-gray-800 bg-[#111318] p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold">Status</div>
-              </div>
-
-              <div
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
-                  status === "disponivel"
-                    ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/20"
-                    : "bg-gray-500/10 text-gray-300 border-gray-500/20"
-                }`}
-              >
-                {status === "disponivel" ? "Disponível" : "Indisponível"}
-              </div>
-            </div>
-
-            <div className="mt-4 flex gap-3">
-              <button
-                onClick={() => definirDisponibilidade("disponivel")}
-                disabled={savingStatus}
-                className={`flex-1 rounded-xl py-3 text-sm font-semibold transition-all border ${
-                  status === "disponivel"
-                    ? "bg-yellow-400 text-gray-900 border-yellow-400"
-                    : "bg-[#1a1f2e] text-gray-200 border-gray-800 hover:border-gray-700"
-                } ${savingStatus ? "opacity-60 cursor-not-allowed" : ""}`}
-              >
-                {savingStatus ? "A guardar..." : "Ficar disponível"}
-              </button>
-
-              <button
-                onClick={() => definirDisponibilidade("indisponivel")}
-                disabled={savingStatus}
-                className={`flex-1 rounded-xl py-3 text-sm font-semibold transition-all border ${
-                  status === "indisponivel"
-                    ? "bg-gray-700 text-white border-gray-700"
-                    : "bg-[#1a1f2e] text-gray-200 border-gray-800 hover:border-gray-700"
-                } ${savingStatus ? "opacity-60 cursor-not-allowed" : ""}`}
-              >
-                {savingStatus ? "A guardar..." : "Parar"}
-              </button>
             </div>
           </section>
 
           <section className="mt-4 rounded-2xl border border-gray-800 bg-[#111318] p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="text-sm font-semibold">Chamadas</div>
-                <div className="text-xs text-gray-500 mt-1">Solicitações pendentes para você.</div>
+                <div className="text-sm font-semibold">Chamadas pendentes</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Atualização automática a cada 15 segundos.
+                </div>
               </div>
 
-              <button
-                onClick={() => {
-                  setNewCallCount(0);
-                  carregarChamadas();
-                }}
-                className="text-xs px-3 py-2 rounded-xl bg-[#1a1f2e] border border-gray-800 text-gray-200 hover:border-gray-700 transition-colors"
-                disabled={loadingChamadas}
-              >
-                {loadingChamadas ? "Atualizando..." : "Atualizar"}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setNewCallCount(0);
+                    carregarChamadas();
+                  }}
+                  className="text-xs px-3 py-2 rounded-xl bg-[#1a1f2e] border border-gray-800 text-gray-200 hover:border-gray-700 transition-colors"
+                  disabled={loadingChamadas}
+                >
+                  {loadingChamadas ? "A carregar..." : "Atualizar"}
+                </button>
+
+                <button
+                  onClick={testarPush}
+                  className={`text-xs px-3 py-2 rounded-xl border transition-colors ${
+                    pushReady
+                      ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/20"
+                      : "bg-[#1a1f2e] text-gray-200 border-gray-800 hover:border-gray-700"
+                  }`}
+                >
+                  {pushReady ? "Push ativo" : "Testar push"}
+                </button>
+              </div>
             </div>
 
             {errChamadas ? (
-              <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              <div className="mt-4 rounded-xl px-4 py-3 text-sm border bg-red-500/10 text-red-300 border-red-500/20">
                 {errChamadas}
               </div>
             ) : null}
 
-            {loadingChamadas ? (
-              <div className="mt-4 text-sm text-gray-300">A carregar chamadas…</div>
-            ) : viagens.length === 0 ? (
-              <div className="mt-4 rounded-xl border border-dashed border-gray-700 bg-[#0f1117] p-4">
-                <div className="text-sm font-semibold text-gray-200">Nenhuma chamada pendente</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Quando um passageiro solicitar, aparecerá aqui.
+            <div className="mt-4 flex flex-col gap-3">
+              {loadingChamadas ? (
+                <div className="text-sm text-gray-300">A carregar chamadas…</div>
+              ) : viagens.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-gray-700 bg-[#0f1117] p-4">
+                  <div className="text-sm font-semibold text-gray-200">Sem chamadas pendentes</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Quando um passageiro solicitar, a viagem aparecerá aqui.
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="mt-4 space-y-3">
-                {viagens.map((v) => (
-                  <div key={v.id} className="rounded-2xl border border-gray-800 bg-[#0f1117] p-4">
+              ) : (
+                viagens.map((v) => (
+                  <div
+                    key={v.id}
+                    className="rounded-2xl border border-gray-800 bg-[#0f1117] p-4"
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="text-sm font-semibold text-gray-100">
                           {v.passageiro?.nome || "Passageiro"}
                         </div>
-                        <div className="text-xs text-gray-500 mt-0.5">
-                          {new Date(v.criadoEm).toLocaleString()}
+                        <div className="text-xs text-gray-500 mt-1">
+                          {v.passageiro?.email || "Sem email"}
                         </div>
                       </div>
 
-                      <span className="text-[11px] text-gray-400 border border-gray-800 rounded-full px-2 py-1">
-                        PENDENTE
+                      <span className="text-[11px] text-yellow-300 border border-yellow-500/20 rounded-full px-2 py-1 bg-yellow-500/10">
+                        {v.status}
                       </span>
                     </div>
 
-                    <div className="mt-3 grid grid-cols-1 gap-2">
-                      <div className="rounded-xl border border-gray-800 bg-[#111318] p-3">
-                        <div className="text-xs text-gray-500">Origem</div>
-                        <div className="text-sm font-semibold text-gray-100">{v.origemTexto}</div>
+                    <div className="mt-4 space-y-2 text-sm">
+                      <div>
+                        <span className="text-gray-500">Origem:</span>{" "}
+                        <span className="text-gray-100">{v.origemTexto}</span>
                       </div>
-                      <div className="rounded-xl border border-gray-800 bg-[#111318] p-3">
-                        <div className="text-xs text-gray-500">Destino</div>
-                        <div className="text-sm font-semibold text-gray-100">{v.destinoTexto}</div>
+                      <div>
+                        <span className="text-gray-500">Destino:</span>{" "}
+                        <span className="text-gray-100">{v.destinoTexto}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Criada em:</span>{" "}
+                        <span className="text-gray-100">
+                          {new Date(v.criadoEm).toLocaleString()}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="mt-3 flex gap-3">
+                    <div className="mt-4 flex items-center gap-2">
                       <button
-                        onClick={() => responderViagem(v.id, "REJEITADA")}
                         disabled={actionId === v.id}
-                        className={`flex-1 rounded-xl py-3 text-sm font-semibold transition-all border ${
-                          actionId === v.id
-                            ? "bg-gray-700 text-gray-300 border-gray-700 cursor-not-allowed"
-                            : "bg-red-500/15 text-red-300 border-red-500/20 hover:bg-red-500/20"
-                        }`}
+                        onClick={() => responderViagem(v.id, "ACEITA")}
+                        className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-60"
                       >
-                        Rejeitar
+                        {actionId === v.id ? "A processar..." : "Aceitar"}
                       </button>
 
                       <button
-                        onClick={() => responderViagem(v.id, "ACEITA")}
                         disabled={actionId === v.id}
-                        className={`flex-1 rounded-xl py-3 text-sm font-semibold transition-all border ${
-                          actionId === v.id
-                            ? "bg-gray-700 text-gray-300 border-gray-700 cursor-not-allowed"
-                            : "bg-yellow-400 text-gray-900 border-yellow-400 hover:bg-yellow-300"
-                        }`}
+                        onClick={() => responderViagem(v.id, "REJEITADA")}
+                        className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold bg-red-500/15 text-red-300 border border-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-60"
                       >
-                        Aceitar
+                        {actionId === v.id ? "A processar..." : "Rejeitar"}
                       </button>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                ))
+              )}
+            </div>
           </section>
-
-          {/* <button
-            onClick={testarPush}
-            className="mt-4 text-xs px-3 py-2 rounded-xl bg-[#1a1f2e] border border-gray-800"
-          >
-            Testar Push {pushReady ? "✅" : "…"}
-          </button> */}
         </main>
-
-        <nav className="fixed bottom-0 left-0 right-0 border-t border-gray-800 bg-[#111318]/95 backdrop-blur">
-          <div className="max-w-md mx-auto px-4 py-3 grid grid-cols-3 gap-2 text-xs">
-            <button className="rounded-xl py-2 bg-yellow-400 text-gray-900 font-semibold">
-              Home
-            </button>
-
-            <button
-              className="rounded-xl py-2 bg-[#1a1f2e] border border-gray-800 text-gray-200 hover:border-gray-700 transition-colors"
-              onClick={() => alert("Em breve: chamadas em tempo real")}
-            >
-              Chamadas
-            </button>
-
-            <button
-              className="rounded-xl py-2 bg-[#1a1f2e] border border-gray-800 text-gray-200 hover:border-gray-700 transition-colors"
-              onClick={() => router.push("/taxista/conta")}
-            >
-              Conta
-            </button>
-          </div>
-        </nav>
       </div>
     </>
   );

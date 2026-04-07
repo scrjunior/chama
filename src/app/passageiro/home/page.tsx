@@ -106,11 +106,10 @@ export default function PassageiroHomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ polling automático do mapa/lista
   useEffect(() => {
     const t = setInterval(() => {
       carregarDados({ silent: true });
-    }, 4000);
+    }, 15000);
 
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
