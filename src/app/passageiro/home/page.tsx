@@ -16,9 +16,35 @@ type TaxistaItem = {
   moto: null | { nomeMoto: string; matricula: string };
 };
 
+type LatLng = {
+  lat: number;
+  lng: number;
+};
+
 const TaxistasMap = dynamic(() => import("@/components/passageiro/TaxistasMap"), {
   ssr: false,
 });
+
+function formatCoord(n: number) {
+  return n.toFixed(6);
+}
+
+function formatLocalTexto(lat: number, lng: number, label: string) {
+  return `${label} (${formatCoord(lat)}, ${formatCoord(lng)})`;
+}
+
+function traduzirErroGeolocation(err: GeolocationPositionError) {
+  switch (err.code) {
+    case 1:
+      return "Permissão de localização negada.";
+    case 2:
+      return "Não foi possível obter a localização do dispositivo.";
+    case 3:
+      return "A localização demorou demais para responder.";
+    default:
+      return err.message || "Erro desconhecido de localização.";
+  }
+}
 
 export default function PassageiroHomePage() {
   const router = useRouter();
@@ -30,17 +56,50 @@ export default function PassageiroHomePage() {
   const [origemTexto, setOrigemTexto] = useState("");
   const [destinoTexto, setDestinoTexto] = useState("");
 
+  const [origemCoords, setOrigemCoords] = useState<LatLng | null>(null);
+  const [destinoCoords, setDestinoCoords] = useState<LatLng | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [loadingGps, setLoadingGps] = useState(false);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   const canSend = useMemo(() => {
-    return !!selectedTaxista && origemTexto.trim().length >= 2 && destinoTexto.trim().length >= 2;
-  }, [selectedTaxista, origemTexto, destinoTexto]);
+    return !!selectedTaxista && !!origemCoords && !!destinoCoords;
+  }, [selectedTaxista, origemCoords, destinoCoords]);
 
   function logout() {
     localStorage.removeItem("passageiroId");
     router.push("/");
+  }
+
+  function atualizarOrigemPelaLocalizacao() {
+    if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
+      setMsg({ type: "err", text: "Este dispositivo não suporta localização." });
+      return;
+    }
+
+    setLoadingGps(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        setOrigemCoords({ lat, lng });
+        setOrigemTexto(formatLocalTexto(lat, lng, "Origem automática"));
+        setLoadingGps(false);
+      },
+      (err) => {
+        setLoadingGps(false);
+        setMsg({ type: "err", text: traduzirErroGeolocation(err) });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 30000,
+        maximumAge: 10000,
+      }
+    );
   }
 
   async function carregarDados(opts?: { silent?: boolean }) {
@@ -103,6 +162,7 @@ export default function PassageiroHomePage() {
     }
 
     carregarDados();
+    atualizarOrigemPelaLocalizacao();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -118,8 +178,18 @@ export default function PassageiroHomePage() {
   async function solicitarViagem() {
     setMsg(null);
 
-    if (!canSend || !selectedTaxista) {
-      setMsg({ type: "err", text: "Selecione um taxista no mapa e preencha origem/destino." });
+    if (!selectedTaxista) {
+      setMsg({ type: "err", text: "Selecione um taxista no mapa." });
+      return;
+    }
+
+    if (!origemCoords) {
+      setMsg({ type: "err", text: "Não foi possível obter a sua localização atual." });
+      return;
+    }
+
+    if (!destinoCoords) {
+      setMsg({ type: "err", text: "Selecione o destino no mapa." });
       return;
     }
 
@@ -149,7 +219,7 @@ export default function PassageiroHomePage() {
       }
 
       setMsg({ type: "ok", text: "Viagem solicitada ✅ (pendente)" });
-      setOrigemTexto("");
+      setDestinoCoords(null);
       setDestinoTexto("");
     } catch {
       setMsg({ type: "err", text: "Erro de rede ao solicitar." });
@@ -175,7 +245,9 @@ export default function PassageiroHomePage() {
               <div className="font-display font-bold text-lg">
                 {passageiroNome ? `Olá, ${passageiroNome.split(" ")[0]}` : "Passageiro"}
               </div>
-              <div className="text-xs text-gray-500 mt-0.5">Selecione um taxista disponível</div>
+              <div className="text-xs text-gray-500 mt-0.5">
+                Selecione um taxista e marque o destino no mapa
+              </div>
             </div>
 
             <button
@@ -205,17 +277,27 @@ export default function PassageiroHomePage() {
               <div>
                 <div className="text-sm font-semibold">Nova Viagem</div>
                 <div className="text-xs text-gray-500 mt-1">
-                  Apenas taxistas “Disponíveis” aparecem no mapa.
+                  A origem é automática e o destino é escolhido no mapa.
                 </div>
               </div>
 
-              <button
-                onClick={() => carregarDados()}
-                className="text-xs px-3 py-2 rounded-xl bg-[#1a1f2e] border border-gray-800 text-gray-200 hover:border-gray-700 transition-colors"
-                disabled={loading}
-              >
-                {loading ? "A carregar..." : "Atualizar"}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => carregarDados()}
+                  className="text-xs px-3 py-2 rounded-xl bg-[#1a1f2e] border border-gray-800 text-gray-200 hover:border-gray-700 transition-colors"
+                  disabled={loading}
+                >
+                  {loading ? "A carregar..." : "Atualizar"}
+                </button>
+
+                <button
+                  onClick={atualizarOrigemPelaLocalizacao}
+                  className="text-xs px-3 py-2 rounded-xl bg-[#1a1f2e] border border-gray-800 text-gray-200 hover:border-gray-700 transition-colors"
+                  disabled={loadingGps}
+                >
+                  {loadingGps ? "GPS..." : "Atualizar origem"}
+                </button>
+              </div>
             </div>
 
             <div className="mt-4">
@@ -232,8 +314,15 @@ export default function PassageiroHomePage() {
                 <TaxistasMap
                   taxistas={taxistas}
                   selectedId={selectedTaxista?.id || ""}
+                  passengerPos={origemCoords}
+                  destinationPos={destinoCoords}
                   onSelect={(t: TaxistaItem) => {
                     setSelectedTaxista(t);
+                    setMsg(null);
+                  }}
+                  onPickDestination={(coords: LatLng) => {
+                    setDestinoCoords(coords);
+                    setDestinoTexto(formatLocalTexto(coords.lat, coords.lng, "Destino selecionado"));
                     setMsg(null);
                   }}
                 />
@@ -245,7 +334,7 @@ export default function PassageiroHomePage() {
                 <div className="rounded-xl border border-dashed border-gray-700 bg-[#0f1117] p-4">
                   <div className="text-sm font-semibold text-gray-200">Nenhum taxista selecionado</div>
                   <div className="text-xs text-gray-500 mt-1">
-                    Clique num marcador no mapa para selecionar um taxista.
+                    Clique num marcador verde/amarelo para selecionar um taxista.
                   </div>
                 </div>
               ) : (
@@ -273,24 +362,22 @@ export default function PassageiroHomePage() {
                   </div>
 
                   <div className="mt-4 flex flex-col gap-3">
-                    <div>
-                      <label className="text-xs text-gray-500">Origem</label>
-                      <input
-                        value={origemTexto}
-                        onChange={(e) => setOrigemTexto(e.target.value)}
-                        placeholder="Ex: Mercado Central"
-                        className="mt-1 w-full bg-[#1a1f2e] border border-gray-700 focus:border-yellow-400 rounded-xl px-4 py-3 text-white text-sm outline-none placeholder:text-gray-600"
-                      />
+                    <div className="rounded-xl border border-gray-800 bg-[#111318] p-3">
+                      <div className="text-xs text-gray-500">Origem automática</div>
+                      <div className="text-sm text-gray-100 mt-1">
+                        {origemTexto || "A obter localização atual..."}
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="text-xs text-gray-500">Destino</label>
-                      <input
-                        value={destinoTexto}
-                        onChange={(e) => setDestinoTexto(e.target.value)}
-                        placeholder="Ex: Universidade"
-                        className="mt-1 w-full bg-[#1a1f2e] border border-gray-700 focus:border-yellow-400 rounded-xl px-4 py-3 text-white text-sm outline-none placeholder:text-gray-600"
-                      />
+                    <div className="rounded-xl border border-gray-800 bg-[#111318] p-3">
+                      <div className="text-xs text-gray-500">Destino selecionado no mapa</div>
+                      <div className="text-sm text-gray-100 mt-1">
+                        {destinoTexto || "Clique no mapa para marcar o destino"}
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-gray-500">
+                      Dica: primeiro selecione o taxista, depois clique no mapa no ponto do destino.
                     </div>
 
                     <button

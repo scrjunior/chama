@@ -1,9 +1,16 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
 import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+
 
 type TaxistaItem = {
   id: string;
@@ -14,27 +21,37 @@ type TaxistaItem = {
   moto: null | { nomeMoto: string; matricula: string };
 };
 
+type LatLng = {
+  lat: number;
+  lng: number;
+};
+
 type Props = {
   taxistas: TaxistaItem[];
   selectedId: string;
+  passengerPos: LatLng | null;
+  destinationPos: LatLng | null;
   onSelect: (taxista: TaxistaItem) => void;
+  onPickDestination: (coords: LatLng) => void;
 };
 
 const DEFAULT_CENTER: [number, number] = [-25.9653, 32.5892];
 
-function makeDivIcon(active: boolean) {
+function makeDivIcon(color: string, size = 18) {
   return L.divIcon({
     className: "",
     html: `
       <div style="
-        width: 18px; height: 18px; border-radius: 9999px;
-        background: ${active ? "#facc15" : "#22c55e"};
+        width: ${size}px;
+        height: ${size}px;
+        border-radius: 9999px;
+        background: ${color};
         border: 3px solid #111318;
         box-shadow: 0 6px 18px rgba(0,0,0,0.35);
       "></div>
     `,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
     popupAnchor: [0, -10],
   });
 }
@@ -51,22 +68,58 @@ function FitToMarkers({ points }: { points: [number, number][] }) {
   return null;
 }
 
-export default function TaxistasMap({ taxistas, selectedId, onSelect }: Props) {
-  const points = useMemo(() => {
-    return taxistas
-      .filter((t) => Number.isFinite(t.lat) && Number.isFinite(t.lng))
-      .map((t) => [t.lat as number, t.lng as number] as [number, number]);
-  }, [taxistas]);
+function DestinationPicker({
+  onPickDestination,
+}: {
+  onPickDestination: (coords: LatLng) => void;
+}) {
+  useMapEvents({
+    click(e) {
+      onPickDestination({
+        lat: e.latlng.lat,
+        lng: e.latlng.lng,
+      });
+    },
+  });
 
-  const center = points[0] ?? DEFAULT_CENTER;
+  return null;
+}
+
+export default function TaxistasMap({
+  taxistas,
+  selectedId,
+  passengerPos,
+  destinationPos,
+  onSelect,
+  onPickDestination,
+}: Props) {
+  const points = useMemo(() => {
+    const items: [number, number][] = [];
+
+    taxistas.forEach((t) => {
+      if (Number.isFinite(t.lat) && Number.isFinite(t.lng)) {
+        items.push([t.lat as number, t.lng as number]);
+      }
+    });
+
+    if (passengerPos) items.push([passengerPos.lat, passengerPos.lng]);
+    if (destinationPos) items.push([destinationPos.lat, destinationPos.lng]);
+
+    return items;
+  }, [taxistas, passengerPos, destinationPos]);
+
+  const center =
+    passengerPos
+      ? [passengerPos.lat, passengerPos.lng]
+      : points[0] ?? DEFAULT_CENTER;
 
   return (
     <div className="w-full overflow-hidden rounded-2xl border border-gray-800 bg-[#0f1117]">
       <MapContainer
-        center={center}
+        center={center as [number, number]}
         zoom={13}
         scrollWheelZoom={true}
-        style={{ width: "100%", height: 360 }}
+        style={{ width: "100%", height: 420 }}
       >
         <TileLayer
           attribution="&copy; OpenStreetMap contributors"
@@ -74,6 +127,39 @@ export default function TaxistasMap({ taxistas, selectedId, onSelect }: Props) {
         />
 
         <FitToMarkers points={points} />
+        <DestinationPicker onPickDestination={onPickDestination} />
+
+        {passengerPos ? (
+          <Marker
+            position={[passengerPos.lat, passengerPos.lng]}
+            icon={makeDivIcon("#3b82f6", 20)}
+          >
+            <Popup>
+              <div style={{ minWidth: 160 }}>
+                <div style={{ fontWeight: 700 }}>Sua localização</div>
+                <div style={{ fontSize: 12, opacity: 0.8, marginTop: 6 }}>
+                  Origem automática da viagem
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        ) : null}
+
+        {destinationPos ? (
+          <Marker
+            position={[destinationPos.lat, destinationPos.lng]}
+            icon={makeDivIcon("#ef4444", 20)}
+          >
+            <Popup>
+              <div style={{ minWidth: 160 }}>
+                <div style={{ fontWeight: 700 }}>Destino</div>
+                <div style={{ fontSize: 12, opacity: 0.8, marginTop: 6 }}>
+                  Destino escolhido no mapa
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        ) : null}
 
         {taxistas.map((t) => {
           if (!Number.isFinite(t.lat) || !Number.isFinite(t.lng)) return null;
@@ -85,7 +171,7 @@ export default function TaxistasMap({ taxistas, selectedId, onSelect }: Props) {
             <Marker
               key={t.id}
               position={pos}
-              icon={makeDivIcon(active)}
+              icon={makeDivIcon(active ? "#facc15" : "#22c55e")}
               eventHandlers={{ click: () => onSelect(t) }}
             >
               <Popup>
@@ -96,7 +182,9 @@ export default function TaxistasMap({ taxistas, selectedId, onSelect }: Props) {
                   <div style={{ fontSize: 12, opacity: 0.8 }}>
                     {t.moto ? `${t.moto.nomeMoto} • ${t.moto.matricula}` : "Sem moto"}
                   </div>
-                  <div style={{ fontSize: 12, marginTop: 8 }}>Clique para selecionar</div>
+                  <div style={{ fontSize: 12, marginTop: 8 }}>
+                    Clique para selecionar este taxista
+                  </div>
                 </div>
               </Popup>
             </Marker>
