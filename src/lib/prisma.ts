@@ -1,5 +1,4 @@
-import "dotenv/config";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../../generated/prisma/client";
 
 declare global {
@@ -8,14 +7,8 @@ declare global {
 }
 
 function createPrismaClient() {
-  const adapter = new PrismaMariaDb({
-    host: process.env.DATABASE_HOST,
-    port: Number(process.env.DATABASE_PORT || 3306),
-    user: process.env.DATABASE_USER,
-    password: process.env.DATABASE_PASSWORD,
-    database: process.env.DATABASE_NAME,
-    connectionLimit: 5,
-    connectTimeout: 10000,
+  const adapter = new PrismaPg({
+    connectionString: process.env.DATABASE_URL,
   });
 
   return new PrismaClient({ adapter });
