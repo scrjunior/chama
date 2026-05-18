@@ -28,47 +28,7 @@ if (
   );
 }
 
-// GET — detalhes de uma viagem (usado pelo passageiro para polling do status)
-export async function GET(
-  _req: Request,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await context.params;
-    const viagemId = String(id ?? "").trim();
-
-    if (!viagemId) {
-      return NextResponse.json({ error: "ID inválido." }, { status: 400 });
-    }
-
-    const viagem = await prisma.viagem.findUnique({
-      where: { id: viagemId },
-      include: {
-        passageiro: { select: { id: true, nome: true, email: true } },
-        taxista: {
-          select: {
-            id: true,
-            nome: true,
-            apelido: true,
-            lat: true,
-            lng: true,
-            moto: { select: { nomeMoto: true, matricula: true } },
-          },
-        },
-      },
-    });
-
-    if (!viagem) {
-      return NextResponse.json({ error: "Viagem não encontrada." }, { status: 404 });
-    }
-
-    return NextResponse.json({ ok: true, viagem });
-  } catch {
-    return NextResponse.json({ error: "Erro ao buscar viagem." }, { status: 500 });
-  }
-}
-
-// PATCH — atualizar status da viagem (ACEITA ou REJEITADA)
+// PATCH — atualizar status da viagem (ACEITA, REJEITADA, CONCLUIDA, CANCELADA)
 export async function PATCH(
   req: Request,
   context: { params: Promise<{ id: string }> }
@@ -98,7 +58,15 @@ export async function PATCH(
       where: { id: viagemId },
       include: {
         passageiro: { select: { id: true, nome: true } },
-        taxista: { select: { id: true, nome: true, apelido: true } },
+        taxista: {
+          select: {
+            id: true,
+            nome: true,
+            apelido: true,
+            lat: true,
+            lng: true,
+          },
+        },
       },
     });
 
@@ -120,6 +88,19 @@ export async function PATCH(
     const updated = await prisma.viagem.update({
       where: { id: viagemId },
       data: { status: novoStatus },
+      include: {
+        taxista: {
+          select: {
+            id: true,
+            nome: true,
+            apelido: true,
+            lat: true,
+            lng: true,
+            moto: { select: { nomeMoto: true, matricula: true } },
+          },
+        },
+        passageiro: { select: { id: true, nome: true } },
+      },
     });
 
     // =============================================
@@ -138,6 +119,9 @@ export async function PATCH(
       } else if (novoStatus === "REJEITADA") {
         title = "Viagem rejeitada ❌";
         bodyMsg = `${viagem.taxista.nome} não está disponível. Por favor escolha outro taxista.`;
+      } else if (novoStatus === "CONCLUIDA") {
+        title = "Viagem concluída ✅";
+        bodyMsg = "A sua viagem foi concluída com sucesso.";
       }
 
       if (title) {

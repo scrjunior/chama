@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 
@@ -21,8 +21,35 @@ type LatLng = {
   lng: number;
 };
 
+type ViagemStatus = "PENDENTE" | "ACEITA" | "REJEITADA" | "CONCLUIDA" | "CANCELADA";
+
+type ViagemAtiva = {
+  id: string;
+  status: ViagemStatus;
+  origemTexto: string;
+  destinoTexto: string;
+  taxista?: {
+    id: string;
+    nome: string;
+    apelido: string;
+    lat?: number | null;
+    lng?: number | null;
+    moto?: { nomeMoto: string; matricula: string } | null;
+  };
+};
+
 const TaxistasMap = dynamic(() => import("@/components/passageiro/TaxistasMap"), {
   ssr: false,
+});
+
+// Reutilizamos o mesmo ViagemAtivaMap do taxista (funciona para ambos)
+const ViagemAtivaMap = dynamic(() => import("@/components/taxista/ViagemAtivaMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[380px] rounded-2xl border border-gray-800 bg-[#0f1117] flex items-center justify-center text-gray-500 text-sm">
+      A carregar mapa…
+    </div>
+  ),
 });
 
 function formatCoord(n: number) {
@@ -46,6 +73,20 @@ function traduzirErroGeolocation(err: GeolocationPositionError) {
   }
 }
 
+// Extrai coordenadas do texto "Origem automática (lat, lng)"
+function extrairCoords(texto: string): LatLng | null {
+  const match = texto.match(/\((-?\d+\.\d+),\s*(-?\d+\.\d+)\)/);
+  if (!match) return null;
+  return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+}
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+}
+
 export default function PassageiroHomePage() {
   const router = useRouter();
 
@@ -62,11 +103,23 @@ export default function PassageiroHomePage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [loadingGps, setLoadingGps] = useState(false);
-  const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [msg, setMsg] = useState<{ type: "ok" | "err" | "info"; text: string } | null>(null);
+
+  // ── Viagem ativa (após solicitar) ──────────────────────────────
+  const [viagemAtiva, setViagemAtiva] = useState<ViagemAtiva | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const canSend = useMemo(() => {
     return !!selectedTaxista && !!origemCoords && !!destinoCoords;
   }, [selectedTaxista, origemCoords, destinoCoords]);
+
+  // Coordenadas da viagem ativa (para o mapa)
+  const viagemOrigemCoords = viagemAtiva ? extrairCoords(viagemAtiva.origemTexto) : null;
+  const viagemDestinoCoords = viagemAtiva ? extrairCoords(viagemAtiva.destinoTexto) : null;
+  const taxistaPos =
+    viagemAtiva?.taxista?.lat && viagemAtiva?.taxista?.lng
+      ? { lat: viagemAtiva.taxista.lat, lng: viagemAtiva.taxista.lng }
+      : null;
 
   function logout() {
     localStorage.removeItem("passageiroId");
@@ -154,6 +207,103 @@ export default function PassageiroHomePage() {
     }
   }
 
+  // ── Polling do status da viagem ativa ─────────────────────────
+  async function verificarStatusViagem(viagemId: string) {
+    try {
+      const res = await fetch(`/api/viagens/${viagemId}/status`, { cache: "no-store" });
+      if (!res.ok) return;
+
+      const data = await res.json().catch(() => null);
+      const viagem = data?.viagem;
+      if (!viagem) return;
+
+      setViagemAtiva((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          status: viagem.status,
+          taxista: viagem.taxista ?? prev.taxista,
+        };
+      });
+
+      if (viagem.status === "ACEITA") {
+        setMsg({ type: "ok", text: "O taxista aceitou a sua viagem! 🚕 A aguardar chegada…" });
+      } else if (viagem.status === "REJEITADA") {
+        setMsg({ type: "err", text: "O taxista rejeitou a viagem. Pode solicitar outro." });
+        pararPolling();
+        setViagemAtiva(null);
+      } else if (viagem.status === "CONCLUIDA") {
+        setMsg({ type: "ok", text: "Viagem concluída! ✅" });
+        pararPolling();
+        setViagemAtiva(null);
+      } else if (viagem.status === "CANCELADA") {
+        setMsg({ type: "err", text: "Viagem cancelada." });
+        pararPolling();
+        setViagemAtiva(null);
+      }
+    } catch {
+      // ignorar erros silenciosos de polling
+    }
+  }
+
+  function pararPolling() {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  }
+
+  function iniciarPolling(viagemId: string) {
+    pararPolling();
+    // Verificar imediatamente e depois a cada 5 segundos
+    verificarStatusViagem(viagemId);
+    pollingRef.current = setInterval(() => {
+      verificarStatusViagem(viagemId);
+    }, 5000);
+  }
+
+  // Parar polling quando o componente desmonta
+  useEffect(() => {
+    return () => pararPolling();
+  }, []);
+
+  // Parar polling quando viagem termina (status final)
+  useEffect(() => {
+    if (!viagemAtiva) {
+      pararPolling();
+    }
+  }, [viagemAtiva]);
+
+  // ── Registo Push para passageiro ──────────────────────────────
+  async function registrarPushParaPassageiro() {
+    try {
+      if (typeof window === "undefined") return;
+      const passageiroId = localStorage.getItem("passageiroId");
+      if (!passageiroId) return;
+      const pub = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!pub) return;
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      const perm = await Notification.requestPermission().catch(() => "default" as NotificationPermission);
+      if (perm !== "granted") return;
+
+      const existing = await reg.pushManager.getSubscription();
+      const sub =
+        existing ||
+        (await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(pub),
+        }));
+
+      await fetch("/api/viagens/passageiro/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ passageiroId, subscription: sub }),
+      });
+    } catch {}
+  }
+
   useEffect(() => {
     const pid = localStorage.getItem("passageiroId");
     if (!pid) {
@@ -163,17 +313,21 @@ export default function PassageiroHomePage() {
 
     carregarDados();
     atualizarOrigemPelaLocalizacao();
+    registrarPushParaPassageiro().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
+    // Só faz polling de taxistas quando não há viagem ativa
+    if (viagemAtiva) return;
+
     const t = setInterval(() => {
       carregarDados({ silent: true });
     }, 15000);
 
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTaxista?.id]);
+  }, [selectedTaxista?.id, viagemAtiva]);
 
   async function solicitarViagem() {
     setMsg(null);
@@ -218,7 +372,27 @@ export default function PassageiroHomePage() {
         return;
       }
 
-      setMsg({ type: "ok", text: "Viagem solicitada ✅ (pendente)" });
+      const novaViagem: ViagemAtiva = {
+        id: data.viagem.id,
+        status: "PENDENTE",
+        origemTexto,
+        destinoTexto,
+        taxista: {
+          id: selectedTaxista.id,
+          nome: selectedTaxista.nome,
+          apelido: selectedTaxista.apelido,
+          lat: selectedTaxista.lat,
+          lng: selectedTaxista.lng,
+          moto: selectedTaxista.moto,
+        },
+      };
+
+      setViagemAtiva(novaViagem);
+      setMsg({ type: "info", text: "Viagem solicitada ✅ A aguardar confirmação do taxista…" });
+
+      // Iniciar polling para acompanhar o status
+      iniciarPolling(data.viagem.id);
+
       setDestinoCoords(null);
       setDestinoTexto("");
     } catch {
@@ -227,6 +401,12 @@ export default function PassageiroHomePage() {
       setSending(false);
     }
   }
+
+  const msgColor = {
+    ok: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20",
+    err: "bg-red-500/10 text-red-300 border-red-500/20",
+    info: "bg-yellow-500/10 text-yellow-300 border-yellow-500/20",
+  };
 
   return (
     <>
@@ -246,7 +426,11 @@ export default function PassageiroHomePage() {
                 {passageiroNome ? `Olá, ${passageiroNome.split(" ")[0]}` : "Passageiro"}
               </div>
               <div className="text-xs text-gray-500 mt-0.5">
-                Selecione um taxista e marque o destino no mapa
+                {viagemAtiva
+                  ? viagemAtiva.status === "ACEITA"
+                    ? "🚕 Viagem em curso"
+                    : "⏳ A aguardar taxista…"
+                  : "Selecione um taxista e marque o destino no mapa"}
               </div>
             </div>
 
@@ -263,139 +447,217 @@ export default function PassageiroHomePage() {
           {msg ? (
             <div
               className={`mb-4 rounded-xl px-4 py-3 text-sm border ${
-                msg.type === "ok"
-                  ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/20"
-                  : "bg-red-500/10 text-red-300 border-red-500/20"
+                msgColor[msg.type]
               }`}
             >
               {msg.text}
             </div>
           ) : null}
 
-          <section className="rounded-2xl border border-gray-800 bg-[#111318] p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold">Nova Viagem</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  A origem é automática e o destino é escolhido no mapa.
+          {/* ============================================ */}
+          {/* ECRÃ DE VIAGEM ATIVA (passageiro)            */}
+          {/* ============================================ */}
+          {viagemAtiva ? (
+            <section className={`rounded-2xl border p-4 ${
+              viagemAtiva.status === "ACEITA"
+                ? "border-yellow-500/20 bg-[#111318]"
+                : "border-gray-800 bg-[#111318]"
+            }`}>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <div className={`text-sm font-semibold ${
+                    viagemAtiva.status === "ACEITA" ? "text-yellow-300" : "text-gray-200"
+                  }`}>
+                    {viagemAtiva.status === "ACEITA" ? "🚕 Viagem aceite!" : "⏳ Aguarda confirmação"}
+                  </div>
+                  {viagemAtiva.taxista && (
+                    <div className="text-xs text-gray-400 mt-1">
+                      Taxista: <span className="text-white">{viagemAtiva.taxista.nome} {viagemAtiva.taxista.apelido}</span>
+                    </div>
+                  )}
+                </div>
+                <span className={`text-[11px] rounded-full px-2 py-1 border ${
+                  viagemAtiva.status === "ACEITA"
+                    ? "bg-yellow-500/10 text-yellow-300 border-yellow-500/20"
+                    : "bg-gray-500/10 text-gray-300 border-gray-500/20"
+                }`}>
+                  {viagemAtiva.status}
+                </span>
+              </div>
+
+              <div className="space-y-2 text-sm mb-4">
+                <div className="rounded-xl border border-gray-800 bg-[#0f1117] p-3">
+                  <div className="text-xs text-gray-500 mb-1">📍 Origem</div>
+                  <div className="text-gray-100">{viagemAtiva.origemTexto}</div>
+                </div>
+                <div className="rounded-xl border border-gray-800 bg-[#0f1117] p-3">
+                  <div className="text-xs text-gray-500 mb-1">🏁 Destino</div>
+                  <div className="text-gray-100">{viagemAtiva.destinoTexto}</div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => carregarDados()}
-                  className="text-xs px-3 py-2 rounded-xl bg-[#1a1f2e] border border-gray-800 text-gray-200 hover:border-gray-700 transition-colors"
-                  disabled={loading}
-                >
-                  {loading ? "A carregar..." : "Atualizar"}
-                </button>
+              {/* Mapa com percurso (visível quando ACEITA) */}
+              {viagemAtiva.status === "ACEITA" && viagemOrigemCoords && viagemDestinoCoords ? (
+                <div className="mb-4">
+                  <ViagemAtivaMap
+                    origemCoords={viagemOrigemCoords}
+                    destinoCoords={viagemDestinoCoords}
+                    taxistaPos={taxistaPos}
+                  />
+                  <div className="mt-2 text-xs text-gray-500 text-center">
+                    A linha amarela mostra o percurso. O ponto azul é a sua origem, vermelho o destino
+                    {taxistaPos ? ", amarelo é o taxista." : "."}
+                  </div>
+                </div>
+              ) : viagemAtiva.status === "PENDENTE" ? (
+                <div className="mb-4 rounded-xl border border-dashed border-yellow-700/40 bg-[#0f1117] p-3 text-xs text-yellow-500/70 text-center">
+                  O mapa aparecerá assim que o taxista aceitar a viagem.
+                </div>
+              ) : null}
 
+              {/* Botão cancelar enquanto PENDENTE */}
+              {viagemAtiva.status === "PENDENTE" && (
                 <button
-                  onClick={atualizarOrigemPelaLocalizacao}
-                  className="text-xs px-3 py-2 rounded-xl bg-[#1a1f2e] border border-gray-800 text-gray-200 hover:border-gray-700 transition-colors"
-                  disabled={loadingGps}
+                  onClick={() => {
+                    pararPolling();
+                    setViagemAtiva(null);
+                    setMsg(null);
+                  }}
+                  className="w-full py-3 rounded-xl text-sm font-semibold bg-red-500/10 text-red-300 border border-red-500/20 hover:bg-red-500/20 transition-colors"
                 >
-                  {loadingGps ? "GPS..." : "Atualizar origem"}
+                  Cancelar pedido
                 </button>
+              )}
+            </section>
+          ) : (
+            /* ============================================ */
+            /* FORMULÁRIO DE NOVA VIAGEM                   */
+            /* ============================================ */
+            <section className="rounded-2xl border border-gray-800 bg-[#111318] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold">Nova Viagem</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    A origem é automática e o destino é escolhido no mapa.
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => carregarDados()}
+                    className="text-xs px-3 py-2 rounded-xl bg-[#1a1f2e] border border-gray-800 text-gray-200 hover:border-gray-700 transition-colors"
+                    disabled={loading}
+                  >
+                    {loading ? "A carregar..." : "Atualizar"}
+                  </button>
+
+                  <button
+                    onClick={atualizarOrigemPelaLocalizacao}
+                    className="text-xs px-3 py-2 rounded-xl bg-[#1a1f2e] border border-gray-800 text-gray-200 hover:border-gray-700 transition-colors"
+                    disabled={loadingGps}
+                  >
+                    {loadingGps ? "GPS..." : "Atualizar origem"}
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <div className="mt-4">
-              {loading ? (
-                <div className="text-sm text-gray-300">A carregar mapa…</div>
-              ) : taxistas.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-gray-700 bg-[#0f1117] p-4">
-                  <div className="text-sm font-semibold text-gray-200">Nenhum taxista disponível</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Quando um taxista clicar “Ficar disponível”, ele aparecerá aqui.
+              <div className="mt-4">
+                {loading ? (
+                  <div className="text-sm text-gray-300">A carregar mapa…</div>
+                ) : taxistas.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-gray-700 bg-[#0f1117] p-4">
+                    <div className="text-sm font-semibold text-gray-200">Nenhum taxista disponível</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Quando um taxista clicar "Ficar disponível", ele aparecerá aqui.
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <TaxistasMap
-                  taxistas={taxistas}
-                  selectedId={selectedTaxista?.id || ""}
-                  passengerPos={origemCoords}
-                  destinationPos={destinoCoords}
-                  onSelect={(t: TaxistaItem) => {
-                    setSelectedTaxista(t);
-                    setMsg(null);
-                  }}
-                  onPickDestination={(coords: LatLng) => {
-                    setDestinoCoords(coords);
-                    setDestinoTexto(formatLocalTexto(coords.lat, coords.lng, "Destino selecionado"));
-                    setMsg(null);
-                  }}
-                />
-              )}
-            </div>
+                ) : (
+                  <TaxistasMap
+                    taxistas={taxistas}
+                    selectedId={selectedTaxista?.id || ""}
+                    passengerPos={origemCoords}
+                    destinationPos={destinoCoords}
+                    onSelect={(t: TaxistaItem) => {
+                      setSelectedTaxista(t);
+                      setMsg(null);
+                    }}
+                    onPickDestination={(coords: LatLng) => {
+                      setDestinoCoords(coords);
+                      setDestinoTexto(formatLocalTexto(coords.lat, coords.lng, "Destino selecionado"));
+                      setMsg(null);
+                    }}
+                  />
+                )}
+              </div>
 
-            <div className="mt-4">
-              {!selectedTaxista ? (
-                <div className="rounded-xl border border-dashed border-gray-700 bg-[#0f1117] p-4">
-                  <div className="text-sm font-semibold text-gray-200">Nenhum taxista selecionado</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Clique num marcador verde/amarelo para selecionar um taxista.
+              <div className="mt-4">
+                {!selectedTaxista ? (
+                  <div className="rounded-xl border border-dashed border-gray-700 bg-[#0f1117] p-4">
+                    <div className="text-sm font-semibold text-gray-200">Nenhum taxista selecionado</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Clique num marcador verde/amarelo para selecionar um taxista.
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-gray-800 bg-[#0f1117] p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-gray-100">
-                        {selectedTaxista.nome} {selectedTaxista.apelido}
+                ) : (
+                  <div className="rounded-2xl border border-gray-800 bg-[#0f1117] p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-gray-100">
+                          {selectedTaxista.nome} {selectedTaxista.apelido}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {selectedTaxista.moto
+                            ? `${selectedTaxista.moto.nomeMoto} • ${selectedTaxista.moto.matricula}`
+                            : "Sem moto"}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {selectedTaxista.lat != null && selectedTaxista.lng != null
+                            ? `Lat: ${selectedTaxista.lat} • Lng: ${selectedTaxista.lng}`
+                            : "Sem coordenadas ainda"}
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {selectedTaxista.moto
-                          ? `${selectedTaxista.moto.nomeMoto} • ${selectedTaxista.moto.matricula}`
-                          : "Sem moto"}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {selectedTaxista.lat != null && selectedTaxista.lng != null
-                          ? `Lat: ${selectedTaxista.lat} • Lng: ${selectedTaxista.lng}`
-                          : "Sem coordenadas ainda"}
-                      </div>
+
+                      <span className="text-[11px] text-gray-400 border border-gray-800 rounded-full px-2 py-1">
+                        Selecionado
+                      </span>
                     </div>
 
-                    <span className="text-[11px] text-gray-400 border border-gray-800 rounded-full px-2 py-1">
-                      Selecionado
-                    </span>
-                  </div>
-
-                  <div className="mt-4 flex flex-col gap-3">
-                    <div className="rounded-xl border border-gray-800 bg-[#111318] p-3">
-                      <div className="text-xs text-gray-500">Origem automática</div>
-                      <div className="text-sm text-gray-100 mt-1">
-                        {origemTexto || "A obter localização atual..."}
+                    <div className="mt-4 flex flex-col gap-3">
+                      <div className="rounded-xl border border-gray-800 bg-[#111318] p-3">
+                        <div className="text-xs text-gray-500">Origem automática</div>
+                        <div className="text-sm text-gray-100 mt-1">
+                          {origemTexto || "A obter localização atual..."}
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="rounded-xl border border-gray-800 bg-[#111318] p-3">
-                      <div className="text-xs text-gray-500">Destino selecionado no mapa</div>
-                      <div className="text-sm text-gray-100 mt-1">
-                        {destinoTexto || "Clique no mapa para marcar o destino"}
+                      <div className="rounded-xl border border-gray-800 bg-[#111318] p-3">
+                        <div className="text-xs text-gray-500">Destino selecionado no mapa</div>
+                        <div className="text-sm text-gray-100 mt-1">
+                          {destinoTexto || "Clique no mapa para marcar o destino"}
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="text-xs text-gray-500">
-                      Dica: primeiro selecione o taxista, depois clique no mapa no ponto do destino.
-                    </div>
+                      <div className="text-xs text-gray-500">
+                        Dica: primeiro selecione o taxista, depois clique no mapa no ponto do destino.
+                      </div>
 
-                    <button
-                      onClick={solicitarViagem}
-                      disabled={sending || !canSend}
-                      className={`mt-1 w-full font-display font-bold py-4 rounded-xl transition-all shadow-lg ${
-                        sending || !canSend
-                          ? "bg-gray-700 text-gray-300 cursor-not-allowed shadow-none"
-                          : "bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-gray-900 shadow-yellow-400/20"
-                      }`}
-                    >
-                      {sending ? "A solicitar..." : "Solicitar viagem"}
-                    </button>
+                      <button
+                        onClick={solicitarViagem}
+                        disabled={sending || !canSend}
+                        className={`mt-1 w-full font-display font-bold py-4 rounded-xl transition-all shadow-lg ${
+                          sending || !canSend
+                            ? "bg-gray-700 text-gray-300 cursor-not-allowed shadow-none"
+                            : "bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-gray-900 shadow-yellow-400/20"
+                        }`}
+                      >
+                        {sending ? "A solicitar..." : "Solicitar viagem"}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          </section>
+                )}
+              </div>
+            </section>
+          )}
         </main>
       </div>
     </>

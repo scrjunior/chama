@@ -1,25 +1,43 @@
 import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
 
-// Store de subscriptions dos PASSAGEIROS
-declare global {
-  // eslint-disable-next-line no-var
-  var __pushSubsPassageiro: Map<string, any> | undefined;
-}
-const store = globalThis.__pushSubsPassageiro ?? new Map<string, any>();
-globalThis.__pushSubsPassageiro = store;
-
-export async function POST(req: Request) {
+// GET — detalhes de uma viagem pelo ID
+// Usado pelo passageiro para polling do status (a cada 5s)
+export async function GET(
+  _req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
-    const body = await req.json();
-    const { passageiroId, subscription } = body || {};
+    const { id } = await context.params;
+    const viagemId = String(id ?? "").trim();
 
-    if (!passageiroId || !subscription) {
-      return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
+    if (!viagemId) {
+      return NextResponse.json({ error: "ID inválido." }, { status: 400 });
     }
 
-    store.set(String(passageiroId), subscription);
-    return NextResponse.json({ ok: true });
+    const viagem = await prisma.viagem.findUnique({
+      where: { id: viagemId },
+      include: {
+        passageiro: { select: { id: true, nome: true, email: true } },
+        taxista: {
+          select: {
+            id: true,
+            nome: true,
+            apelido: true,
+            lat: true,
+            lng: true,
+            moto: { select: { nomeMoto: true, matricula: true } },
+          },
+        },
+      },
+    });
+
+    if (!viagem) {
+      return NextResponse.json({ error: "Viagem não encontrada." }, { status: 404 });
+    }
+
+    return NextResponse.json({ ok: true, viagem });
   } catch {
-    return NextResponse.json({ error: "Falha ao salvar subscription" }, { status: 500 });
+    return NextResponse.json({ error: "Erro ao buscar viagem." }, { status: 500 });
   }
 }
