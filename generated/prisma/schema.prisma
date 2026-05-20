@@ -52,6 +52,7 @@ model viagem {
   criadoEm     DateTime      @default(now())
   passageiroId String
   taxistaId    String
+  precoMt      Float?
   passageiro   passageiro    @relation(fields: [passageiroId], references: [id])
   taxista      taxista       @relation(fields: [taxistaId], references: [id])
 

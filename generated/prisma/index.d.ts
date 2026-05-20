@@ -4602,8 +4602,18 @@ export namespace Prisma {
 
   export type AggregateViagem = {
     _count: ViagemCountAggregateOutputType | null
+    _avg: ViagemAvgAggregateOutputType | null
+    _sum: ViagemSumAggregateOutputType | null
     _min: ViagemMinAggregateOutputType | null
     _max: ViagemMaxAggregateOutputType | null
+  }
+
+  export type ViagemAvgAggregateOutputType = {
+    precoMt: number | null
+  }
+
+  export type ViagemSumAggregateOutputType = {
+    precoMt: number | null
   }
 
   export type ViagemMinAggregateOutputType = {
@@ -4614,6 +4624,7 @@ export namespace Prisma {
     criadoEm: Date | null
     passageiroId: string | null
     taxistaId: string | null
+    precoMt: number | null
   }
 
   export type ViagemMaxAggregateOutputType = {
@@ -4624,6 +4635,7 @@ export namespace Prisma {
     criadoEm: Date | null
     passageiroId: string | null
     taxistaId: string | null
+    precoMt: number | null
   }
 
   export type ViagemCountAggregateOutputType = {
@@ -4634,9 +4646,18 @@ export namespace Prisma {
     criadoEm: number
     passageiroId: number
     taxistaId: number
+    precoMt: number
     _all: number
   }
 
+
+  export type ViagemAvgAggregateInputType = {
+    precoMt?: true
+  }
+
+  export type ViagemSumAggregateInputType = {
+    precoMt?: true
+  }
 
   export type ViagemMinAggregateInputType = {
     id?: true
@@ -4646,6 +4667,7 @@ export namespace Prisma {
     criadoEm?: true
     passageiroId?: true
     taxistaId?: true
+    precoMt?: true
   }
 
   export type ViagemMaxAggregateInputType = {
@@ -4656,6 +4678,7 @@ export namespace Prisma {
     criadoEm?: true
     passageiroId?: true
     taxistaId?: true
+    precoMt?: true
   }
 
   export type ViagemCountAggregateInputType = {
@@ -4666,6 +4689,7 @@ export namespace Prisma {
     criadoEm?: true
     passageiroId?: true
     taxistaId?: true
+    precoMt?: true
     _all?: true
   }
 
@@ -4707,6 +4731,18 @@ export namespace Prisma {
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
+     * Select which fields to average
+    **/
+    _avg?: ViagemAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: ViagemSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
      * Select which fields to find the minimum value
     **/
     _min?: ViagemMinAggregateInputType
@@ -4737,6 +4773,8 @@ export namespace Prisma {
     take?: number
     skip?: number
     _count?: ViagemCountAggregateInputType | true
+    _avg?: ViagemAvgAggregateInputType
+    _sum?: ViagemSumAggregateInputType
     _min?: ViagemMinAggregateInputType
     _max?: ViagemMaxAggregateInputType
   }
@@ -4749,7 +4787,10 @@ export namespace Prisma {
     criadoEm: Date
     passageiroId: string
     taxistaId: string
+    precoMt: number | null
     _count: ViagemCountAggregateOutputType | null
+    _avg: ViagemAvgAggregateOutputType | null
+    _sum: ViagemSumAggregateOutputType | null
     _min: ViagemMinAggregateOutputType | null
     _max: ViagemMaxAggregateOutputType | null
   }
@@ -4776,6 +4817,7 @@ export namespace Prisma {
     criadoEm?: boolean
     passageiroId?: boolean
     taxistaId?: boolean
+    precoMt?: boolean
     passageiro?: boolean | passageiroDefaultArgs<ExtArgs>
     taxista?: boolean | taxistaDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["viagem"]>
@@ -4788,6 +4830,7 @@ export namespace Prisma {
     criadoEm?: boolean
     passageiroId?: boolean
     taxistaId?: boolean
+    precoMt?: boolean
     passageiro?: boolean | passageiroDefaultArgs<ExtArgs>
     taxista?: boolean | taxistaDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["viagem"]>
@@ -4800,6 +4843,7 @@ export namespace Prisma {
     criadoEm?: boolean
     passageiroId?: boolean
     taxistaId?: boolean
+    precoMt?: boolean
     passageiro?: boolean | passageiroDefaultArgs<ExtArgs>
     taxista?: boolean | taxistaDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["viagem"]>
@@ -4812,9 +4856,10 @@ export namespace Prisma {
     criadoEm?: boolean
     passageiroId?: boolean
     taxistaId?: boolean
+    precoMt?: boolean
   }
 
-  export type viagemOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "status" | "origemTexto" | "destinoTexto" | "criadoEm" | "passageiroId" | "taxistaId", ExtArgs["result"]["viagem"]>
+  export type viagemOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "status" | "origemTexto" | "destinoTexto" | "criadoEm" | "passageiroId" | "taxistaId" | "precoMt", ExtArgs["result"]["viagem"]>
   export type viagemInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     passageiro?: boolean | passageiroDefaultArgs<ExtArgs>
     taxista?: boolean | taxistaDefaultArgs<ExtArgs>
@@ -4842,6 +4887,7 @@ export namespace Prisma {
       criadoEm: Date
       passageiroId: string
       taxistaId: string
+      precoMt: number | null
     }, ExtArgs["result"]["viagem"]>
     composites: {}
   }
@@ -5274,6 +5320,7 @@ export namespace Prisma {
     readonly criadoEm: FieldRef<"viagem", 'DateTime'>
     readonly passageiroId: FieldRef<"viagem", 'String'>
     readonly taxistaId: FieldRef<"viagem", 'String'>
+    readonly precoMt: FieldRef<"viagem", 'Float'>
   }
     
 
@@ -5751,7 +5798,8 @@ export namespace Prisma {
     destinoTexto: 'destinoTexto',
     criadoEm: 'criadoEm',
     passageiroId: 'passageiroId',
-    taxistaId: 'taxistaId'
+    taxistaId: 'taxistaId',
+    precoMt: 'precoMt'
   };
 
   export type ViagemScalarFieldEnum = (typeof ViagemScalarFieldEnum)[keyof typeof ViagemScalarFieldEnum]
@@ -6092,6 +6140,7 @@ export namespace Prisma {
     criadoEm?: DateTimeFilter<"viagem"> | Date | string
     passageiroId?: StringFilter<"viagem"> | string
     taxistaId?: StringFilter<"viagem"> | string
+    precoMt?: FloatNullableFilter<"viagem"> | number | null
     passageiro?: XOR<PassageiroScalarRelationFilter, passageiroWhereInput>
     taxista?: XOR<TaxistaScalarRelationFilter, taxistaWhereInput>
   }
@@ -6104,6 +6153,7 @@ export namespace Prisma {
     criadoEm?: SortOrder
     passageiroId?: SortOrder
     taxistaId?: SortOrder
+    precoMt?: SortOrderInput | SortOrder
     passageiro?: passageiroOrderByWithRelationInput
     taxista?: taxistaOrderByWithRelationInput
   }
@@ -6119,6 +6169,7 @@ export namespace Prisma {
     criadoEm?: DateTimeFilter<"viagem"> | Date | string
     passageiroId?: StringFilter<"viagem"> | string
     taxistaId?: StringFilter<"viagem"> | string
+    precoMt?: FloatNullableFilter<"viagem"> | number | null
     passageiro?: XOR<PassageiroScalarRelationFilter, passageiroWhereInput>
     taxista?: XOR<TaxistaScalarRelationFilter, taxistaWhereInput>
   }, "id">
@@ -6131,9 +6182,12 @@ export namespace Prisma {
     criadoEm?: SortOrder
     passageiroId?: SortOrder
     taxistaId?: SortOrder
+    precoMt?: SortOrderInput | SortOrder
     _count?: viagemCountOrderByAggregateInput
+    _avg?: viagemAvgOrderByAggregateInput
     _max?: viagemMaxOrderByAggregateInput
     _min?: viagemMinOrderByAggregateInput
+    _sum?: viagemSumOrderByAggregateInput
   }
 
   export type viagemScalarWhereWithAggregatesInput = {
@@ -6147,6 +6201,7 @@ export namespace Prisma {
     criadoEm?: DateTimeWithAggregatesFilter<"viagem"> | Date | string
     passageiroId?: StringWithAggregatesFilter<"viagem"> | string
     taxistaId?: StringWithAggregatesFilter<"viagem"> | string
+    precoMt?: FloatNullableWithAggregatesFilter<"viagem"> | number | null
   }
 
   export type motoCreateInput = {
@@ -6397,6 +6452,7 @@ export namespace Prisma {
     origemTexto: string
     destinoTexto: string
     criadoEm?: Date | string
+    precoMt?: number | null
     passageiro: passageiroCreateNestedOneWithoutViagemInput
     taxista: taxistaCreateNestedOneWithoutViagemInput
   }
@@ -6409,6 +6465,7 @@ export namespace Prisma {
     criadoEm?: Date | string
     passageiroId: string
     taxistaId: string
+    precoMt?: number | null
   }
 
   export type viagemUpdateInput = {
@@ -6417,6 +6474,7 @@ export namespace Prisma {
     origemTexto?: StringFieldUpdateOperationsInput | string
     destinoTexto?: StringFieldUpdateOperationsInput | string
     criadoEm?: DateTimeFieldUpdateOperationsInput | Date | string
+    precoMt?: NullableFloatFieldUpdateOperationsInput | number | null
     passageiro?: passageiroUpdateOneRequiredWithoutViagemNestedInput
     taxista?: taxistaUpdateOneRequiredWithoutViagemNestedInput
   }
@@ -6429,6 +6487,7 @@ export namespace Prisma {
     criadoEm?: DateTimeFieldUpdateOperationsInput | Date | string
     passageiroId?: StringFieldUpdateOperationsInput | string
     taxistaId?: StringFieldUpdateOperationsInput | string
+    precoMt?: NullableFloatFieldUpdateOperationsInput | number | null
   }
 
   export type viagemCreateManyInput = {
@@ -6439,6 +6498,7 @@ export namespace Prisma {
     criadoEm?: Date | string
     passageiroId: string
     taxistaId: string
+    precoMt?: number | null
   }
 
   export type viagemUpdateManyMutationInput = {
@@ -6447,6 +6507,7 @@ export namespace Prisma {
     origemTexto?: StringFieldUpdateOperationsInput | string
     destinoTexto?: StringFieldUpdateOperationsInput | string
     criadoEm?: DateTimeFieldUpdateOperationsInput | Date | string
+    precoMt?: NullableFloatFieldUpdateOperationsInput | number | null
   }
 
   export type viagemUncheckedUpdateManyInput = {
@@ -6457,6 +6518,7 @@ export namespace Prisma {
     criadoEm?: DateTimeFieldUpdateOperationsInput | Date | string
     passageiroId?: StringFieldUpdateOperationsInput | string
     taxistaId?: StringFieldUpdateOperationsInput | string
+    precoMt?: NullableFloatFieldUpdateOperationsInput | number | null
   }
 
   export type StringFilter<$PrismaModel = never> = {
@@ -6738,6 +6800,11 @@ export namespace Prisma {
     criadoEm?: SortOrder
     passageiroId?: SortOrder
     taxistaId?: SortOrder
+    precoMt?: SortOrder
+  }
+
+  export type viagemAvgOrderByAggregateInput = {
+    precoMt?: SortOrder
   }
 
   export type viagemMaxOrderByAggregateInput = {
@@ -6748,6 +6815,7 @@ export namespace Prisma {
     criadoEm?: SortOrder
     passageiroId?: SortOrder
     taxistaId?: SortOrder
+    precoMt?: SortOrder
   }
 
   export type viagemMinOrderByAggregateInput = {
@@ -6758,6 +6826,11 @@ export namespace Prisma {
     criadoEm?: SortOrder
     passageiroId?: SortOrder
     taxistaId?: SortOrder
+    precoMt?: SortOrder
+  }
+
+  export type viagemSumOrderByAggregateInput = {
+    precoMt?: SortOrder
   }
 
   export type Enumviagem_statusWithAggregatesFilter<$PrismaModel = never> = {
@@ -7202,6 +7275,7 @@ export namespace Prisma {
     origemTexto: string
     destinoTexto: string
     criadoEm?: Date | string
+    precoMt?: number | null
     taxista: taxistaCreateNestedOneWithoutViagemInput
   }
 
@@ -7212,6 +7286,7 @@ export namespace Prisma {
     destinoTexto: string
     criadoEm?: Date | string
     taxistaId: string
+    precoMt?: number | null
   }
 
   export type viagemCreateOrConnectWithoutPassageiroInput = {
@@ -7251,6 +7326,7 @@ export namespace Prisma {
     criadoEm?: DateTimeFilter<"viagem"> | Date | string
     passageiroId?: StringFilter<"viagem"> | string
     taxistaId?: StringFilter<"viagem"> | string
+    precoMt?: FloatNullableFilter<"viagem"> | number | null
   }
 
   export type motoCreateWithoutTaxistaInput = {
@@ -7278,6 +7354,7 @@ export namespace Prisma {
     origemTexto: string
     destinoTexto: string
     criadoEm?: Date | string
+    precoMt?: number | null
     passageiro: passageiroCreateNestedOneWithoutViagemInput
   }
 
@@ -7288,6 +7365,7 @@ export namespace Prisma {
     destinoTexto: string
     criadoEm?: Date | string
     passageiroId: string
+    precoMt?: number | null
   }
 
   export type viagemCreateOrConnectWithoutTaxistaInput = {
@@ -7484,6 +7562,7 @@ export namespace Prisma {
     destinoTexto: string
     criadoEm?: Date | string
     taxistaId: string
+    precoMt?: number | null
   }
 
   export type viagemUpdateWithoutPassageiroInput = {
@@ -7492,6 +7571,7 @@ export namespace Prisma {
     origemTexto?: StringFieldUpdateOperationsInput | string
     destinoTexto?: StringFieldUpdateOperationsInput | string
     criadoEm?: DateTimeFieldUpdateOperationsInput | Date | string
+    precoMt?: NullableFloatFieldUpdateOperationsInput | number | null
     taxista?: taxistaUpdateOneRequiredWithoutViagemNestedInput
   }
 
@@ -7502,6 +7582,7 @@ export namespace Prisma {
     destinoTexto?: StringFieldUpdateOperationsInput | string
     criadoEm?: DateTimeFieldUpdateOperationsInput | Date | string
     taxistaId?: StringFieldUpdateOperationsInput | string
+    precoMt?: NullableFloatFieldUpdateOperationsInput | number | null
   }
 
   export type viagemUncheckedUpdateManyWithoutPassageiroInput = {
@@ -7511,6 +7592,7 @@ export namespace Prisma {
     destinoTexto?: StringFieldUpdateOperationsInput | string
     criadoEm?: DateTimeFieldUpdateOperationsInput | Date | string
     taxistaId?: StringFieldUpdateOperationsInput | string
+    precoMt?: NullableFloatFieldUpdateOperationsInput | number | null
   }
 
   export type viagemCreateManyTaxistaInput = {
@@ -7520,6 +7602,7 @@ export namespace Prisma {
     destinoTexto: string
     criadoEm?: Date | string
     passageiroId: string
+    precoMt?: number | null
   }
 
   export type viagemUpdateWithoutTaxistaInput = {
@@ -7528,6 +7611,7 @@ export namespace Prisma {
     origemTexto?: StringFieldUpdateOperationsInput | string
     destinoTexto?: StringFieldUpdateOperationsInput | string
     criadoEm?: DateTimeFieldUpdateOperationsInput | Date | string
+    precoMt?: NullableFloatFieldUpdateOperationsInput | number | null
     passageiro?: passageiroUpdateOneRequiredWithoutViagemNestedInput
   }
 
@@ -7538,6 +7622,7 @@ export namespace Prisma {
     destinoTexto?: StringFieldUpdateOperationsInput | string
     criadoEm?: DateTimeFieldUpdateOperationsInput | Date | string
     passageiroId?: StringFieldUpdateOperationsInput | string
+    precoMt?: NullableFloatFieldUpdateOperationsInput | number | null
   }
 
   export type viagemUncheckedUpdateManyWithoutTaxistaInput = {
@@ -7547,6 +7632,7 @@ export namespace Prisma {
     destinoTexto?: StringFieldUpdateOperationsInput | string
     criadoEm?: DateTimeFieldUpdateOperationsInput | Date | string
     passageiroId?: StringFieldUpdateOperationsInput | string
+    precoMt?: NullableFloatFieldUpdateOperationsInput | number | null
   }
 
 

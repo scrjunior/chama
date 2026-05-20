@@ -160,7 +160,8 @@ exports.Prisma.ViagemScalarFieldEnum = {
   destinoTexto: 'destinoTexto',
   criadoEm: 'criadoEm',
   passageiroId: 'passageiroId',
-  taxistaId: 'taxistaId'
+  taxistaId: 'taxistaId',
+  precoMt: 'precoMt'
 };
 
 exports.Prisma.SortOrder = {
