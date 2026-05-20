@@ -561,9 +561,10 @@ export default function TaxistaHomePage() {
                     origemCoords={viagemOrigemCoords}
                     destinoCoords={viagemDestinoCoords}
                     taxistaPos={taxistaPos}
+                    modo="taxista"
                   />
                   <div className="mt-2 text-xs text-gray-500 text-center">
-                    A linha amarela mostra o percurso. O ponto azul é a origem, vermelho o destino.
+                    🟡 Você → 🔵 Passageiro (pickup) · 🔴 Destino final
                   </div>
                 </div>
               ) : (

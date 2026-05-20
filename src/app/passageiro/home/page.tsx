@@ -210,7 +210,7 @@ export default function PassageiroHomePage() {
   // ── Polling do status da viagem ativa ─────────────────────────
   async function verificarStatusViagem(viagemId: string) {
     try {
-      const res = await fetch(`/api/viagens/${viagemId}`, { cache: "no-store" });
+      const res = await fetch(`/api/viagens/${viagemId}/status`, { cache: "no-store" });
       if (!res.ok) return;
 
       const data = await res.json().catch(() => null);
@@ -503,10 +503,12 @@ export default function PassageiroHomePage() {
                     origemCoords={viagemOrigemCoords}
                     destinoCoords={viagemDestinoCoords}
                     taxistaPos={taxistaPos}
+                    modo="passageiro"
                   />
                   <div className="mt-2 text-xs text-gray-500 text-center">
-                    A linha amarela mostra o percurso. O ponto azul é a sua origem, vermelho o destino
-                    {taxistaPos ? ", amarelo é o taxista." : "."}
+                    {taxistaPos
+                      ? "🟡 Taxista a caminho · 🔵 Você · 🔴 Destino"
+                      : "🔵 Você · 🔴 Destino · O taxista aparecerá quando partilhar localização"}
                   </div>
                 </div>
               ) : viagemAtiva.status === "PENDENTE" ? (

@@ -12,15 +12,21 @@ import L from "leaflet";
 
 type LatLng = { lat: number; lng: number };
 
+/**
+ * modo = "taxista"   → mostra trajeto DO taxista ATÉ ao passageiro (pickup)
+ *                      Marcadores: 🟡 Você (taxista) → 🔵 Passageiro
+ * modo = "passageiro" → mostra trajeto DO passageiro ATÉ ao destino
+ *                      Marcadores: 🔵 Você (passageiro) → 🔴 Destino
+ *                      + 🟡 Taxista a caminho (se disponível)
+ */
 type Props = {
-  origemCoords: LatLng;
-  destinoCoords: LatLng;
-  taxistaPos: LatLng | null;
+  origemCoords: LatLng;   // posição do passageiro
+  destinoCoords: LatLng;  // destino final
+  taxistaPos: LatLng | null; // posição atual do taxista (GPS)
+  modo: "taxista" | "passageiro";
 };
 
-const DEFAULT_CENTER: [number, number] = [-25.9653, 32.5892];
-
-function makeDivIcon(color: string, size = 20, label?: string) {
+function makeDivIcon(color: string, size = 20, label?: string, emoji?: string) {
   return L.divIcon({
     className: "",
     html: `
@@ -38,7 +44,11 @@ function makeDivIcon(color: string, size = 20, label?: string) {
           background: ${color};
           border: 3px solid #111318;
           box-shadow: 0 4px 14px rgba(0,0,0,0.4);
-        "></div>
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: ${size * 0.5}px;
+        ">${emoji ?? ""}</div>
         ${
           label
             ? `<div style="
@@ -73,18 +83,9 @@ function RoutePolyline({
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    // Limpar linha anterior
-    if (polyRef.current) {
-      polyRef.current.remove();
-      polyRef.current = null;
-    }
-    if (routeRef.current) {
-      routeRef.current.remove();
-      routeRef.current = null;
-    }
-    if (abortRef.current) {
-      abortRef.current.abort();
-    }
+    if (polyRef.current) { polyRef.current.remove(); polyRef.current = null; }
+    if (routeRef.current) { routeRef.current.remove(); routeRef.current = null; }
+    if (abortRef.current) abortRef.current.abort();
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -99,45 +100,26 @@ function RoutePolyline({
 
         const latLngs = coords.map(([lng, lat]) => L.latLng(lat, lng));
 
-        // Linha de fundo (sombra)
         polyRef.current = L.polyline(latLngs, {
-          color: "#0f1117",
-          weight: 7,
-          opacity: 0.7,
+          color: "#0f1117", weight: 7, opacity: 0.7,
         }).addTo(map);
 
-        // Linha principal
         routeRef.current = L.polyline(latLngs, {
-          color: "#facc15",
-          weight: 4,
-          opacity: 1,
-          dashArray: undefined,
+          color: "#facc15", weight: 4, opacity: 1,
         }).addTo(map);
 
-        // Ajustar o mapa para o percurso
-        const bounds = L.latLngBounds(latLngs);
-        map.fitBounds(bounds, { padding: [40, 40] });
+        map.fitBounds(L.latLngBounds(latLngs), { padding: [40, 40] });
       })
       .catch(() => {
-        // Se OSRM falhar, mostrar linha reta como fallback
         const latLngs = [
           L.latLng(origem.lat, origem.lng),
           L.latLng(destino.lat, destino.lng),
         ];
-        polyRef.current = L.polyline(latLngs, {
-          color: "#0f1117",
-          weight: 6,
-          opacity: 0.6,
-        }).addTo(map);
+        polyRef.current = L.polyline(latLngs, { color: "#0f1117", weight: 6, opacity: 0.6 }).addTo(map);
         routeRef.current = L.polyline(latLngs, {
-          color: "#facc15",
-          weight: 3,
-          opacity: 0.9,
-          dashArray: "8, 6",
+          color: "#facc15", weight: 3, opacity: 0.9, dashArray: "8, 6",
         }).addTo(map);
-
-        const bounds = L.latLngBounds(latLngs);
-        map.fitBounds(bounds, { padding: [40, 40] });
+        map.fitBounds(L.latLngBounds(latLngs), { padding: [40, 40] });
       });
 
     return () => {
@@ -150,61 +132,80 @@ function RoutePolyline({
   return null;
 }
 
-export default function ViagemAtivaMap({ origemCoords, destinoCoords, taxistaPos }: Props) {
+export default function ViagemAtivaMap({ origemCoords, destinoCoords, taxistaPos, modo }: Props) {
+  // ────────────────────────────────────────────────────────────────
+  // MODO TAXISTA
+  // O taxista precisa de ir BUSCAR o passageiro primeiro.
+  // Trajeto principal: posição do taxista → posição do passageiro (pickup)
+  // Quando não há GPS do taxista, mostra trajeto passageiro → destino
+  // ────────────────────────────────────────────────────────────────
+  if (modo === "taxista") {
+    const pickupRouteStart = taxistaPos ?? origemCoords;
+    const center: [number, number] = [pickupRouteStart.lat, pickupRouteStart.lng];
+
+    return (
+      <div className="w-full overflow-hidden rounded-2xl border border-gray-800 bg-[#0f1117]">
+        <MapContainer center={center} zoom={14} scrollWheelZoom style={{ width: "100%", height: 380 }}>
+          <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+
+          {/* Trajeto: taxista → passageiro (pickup) */}
+          <RoutePolyline origem={pickupRouteStart} destino={origemCoords} />
+
+          {/* Posição do taxista (Você) */}
+          {taxistaPos && (
+            <Marker position={[taxistaPos.lat, taxistaPos.lng]} icon={makeDivIcon("#facc15", 22, "Você", "🛵")}>
+              <Popup><div style={{ minWidth: 140 }}><div style={{ fontWeight: 700 }}>🛵 A sua posição</div></div></Popup>
+            </Marker>
+          )}
+
+          {/* Posição do passageiro (ponto de pickup) */}
+          <Marker position={[origemCoords.lat, origemCoords.lng]} icon={makeDivIcon("#3b82f6", 20, "Passageiro")}>
+            <Popup><div style={{ minWidth: 140 }}><div style={{ fontWeight: 700 }}>👤 Local de pickup</div><div style={{ fontSize: 12, opacity: 0.8 }}>Vai buscar aqui</div></div></Popup>
+          </Marker>
+
+          {/* Destino final (referência) */}
+          <Marker position={[destinoCoords.lat, destinoCoords.lng]} icon={makeDivIcon("#ef4444", 16, "Destino")}>
+            <Popup><div style={{ minWidth: 140 }}><div style={{ fontWeight: 700 }}>🏁 Destino final</div></div></Popup>
+          </Marker>
+        </MapContainer>
+      </div>
+    );
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // MODO PASSAGEIRO
+  // O passageiro quer ver o taxista a chegar até si.
+  // Trajeto principal: posição do taxista → passageiro (se taxistaPos disponível)
+  // Fallback: passageiro → destino
+  // ────────────────────────────────────────────────────────────────
+  const routeStart = taxistaPos ?? origemCoords;
+  const routeEnd = taxistaPos ? origemCoords : destinoCoords;
   const center: [number, number] = taxistaPos
     ? [taxistaPos.lat, taxistaPos.lng]
     : [origemCoords.lat, origemCoords.lng];
 
   return (
     <div className="w-full overflow-hidden rounded-2xl border border-gray-800 bg-[#0f1117]">
-      <MapContainer
-        center={center}
-        zoom={14}
-        scrollWheelZoom={true}
-        style={{ width: "100%", height: 380 }}
-      >
-        <TileLayer
-          attribution="&copy; OpenStreetMap contributors"
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+      <MapContainer center={center} zoom={14} scrollWheelZoom style={{ width: "100%", height: 380 }}>
+        <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
-        <RoutePolyline origem={origemCoords} destino={destinoCoords} />
+        {/* Trajeto: taxista → passageiro (se GPS disponível) ou passageiro → destino */}
+        <RoutePolyline origem={routeStart} destino={routeEnd} />
 
-        {/* Marcador de origem (passageiro) */}
-        <Marker
-          position={[origemCoords.lat, origemCoords.lng]}
-          icon={makeDivIcon("#3b82f6", 20, "Origem")}
-        >
-          <Popup>
-            <div style={{ minWidth: 140 }}>
-              <div style={{ fontWeight: 700 }}>📍 Origem do passageiro</div>
-            </div>
-          </Popup>
+        {/* Posição do passageiro (Você) */}
+        <Marker position={[origemCoords.lat, origemCoords.lng]} icon={makeDivIcon("#3b82f6", 22, "Você")}>
+          <Popup><div style={{ minWidth: 140 }}><div style={{ fontWeight: 700 }}>📍 A sua posição</div></div></Popup>
         </Marker>
 
-        {/* Marcador de destino */}
-        <Marker
-          position={[destinoCoords.lat, destinoCoords.lng]}
-          icon={makeDivIcon("#ef4444", 20, "Destino")}
-        >
-          <Popup>
-            <div style={{ minWidth: 140 }}>
-              <div style={{ fontWeight: 700 }}>🏁 Destino</div>
-            </div>
-          </Popup>
+        {/* Destino */}
+        <Marker position={[destinoCoords.lat, destinoCoords.lng]} icon={makeDivIcon("#ef4444", 20, "Destino")}>
+          <Popup><div style={{ minWidth: 140 }}><div style={{ fontWeight: 700 }}>🏁 Destino</div></div></Popup>
         </Marker>
 
-        {/* Posição atual do taxista */}
+        {/* Taxista a caminho */}
         {taxistaPos && (
-          <Marker
-            position={[taxistaPos.lat, taxistaPos.lng]}
-            icon={makeDivIcon("#facc15", 22, "Você")}
-          >
-            <Popup>
-              <div style={{ minWidth: 140 }}>
-                <div style={{ fontWeight: 700 }}>🛵 A sua posição</div>
-              </div>
-            </Popup>
+          <Marker position={[taxistaPos.lat, taxistaPos.lng]} icon={makeDivIcon("#facc15", 22, "Taxista 🛵")}>
+            <Popup><div style={{ minWidth: 140 }}><div style={{ fontWeight: 700 }}>🛵 Taxista a caminho</div></div></Popup>
           </Marker>
         )}
       </MapContainer>
