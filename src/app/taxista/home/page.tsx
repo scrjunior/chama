@@ -40,6 +40,16 @@ const ViagemAtivaMap = dynamic(() => import("@/components/taxista/ViagemAtivaMap
   ),
 });
 
+// Mapa do pedido pendente (preview compacto)
+const PedidoMap = dynamic(() => import("@/components/taxista/PedidoMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[200px] rounded-xl border border-gray-800 bg-[#0f1117] flex items-center justify-center text-gray-500 text-xs">
+      A carregar mapa…
+    </div>
+  ),
+});
+
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -674,62 +684,74 @@ export default function TaxistaHomePage() {
                       </div>
                     </div>
                   ) : (
-                    viagens.map((v) => (
-                      <div
-                        key={v.id}
-                        className="rounded-2xl border border-gray-800 bg-[#0f1117] p-4"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="text-sm font-semibold text-gray-100">
-                              {v.passageiro?.nome || "Passageiro"}
+                    viagens.map((v) => {
+                      const pedidoOrigem = extrairCoords(v.origemTexto);
+                      const pedidoDestino = extrairCoords(v.destinoTexto);
+                      return (
+                        <div
+                          key={v.id}
+                          className="rounded-2xl border border-gray-800 bg-[#0f1117] p-4"
+                        >
+                          {/* Cabeçalho: passageiro + badge */}
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <div>
+                              <div className="text-sm font-semibold text-gray-100">
+                                {v.passageiro?.nome || "Passageiro"}
+                              </div>
+                              <div className="text-xs text-gray-500 mt-0.5">
+                                {new Date(v.criadoEm).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </div>
                             </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              {v.passageiro?.email || "Sem email"}
-                            </div>
-                          </div>
-
-                          <span className="text-[11px] text-yellow-300 border border-yellow-500/20 rounded-full px-2 py-1 bg-yellow-500/10">
-                            {v.status}
-                          </span>
-                        </div>
-
-                        <div className="mt-4 space-y-2 text-sm">
-                          <div>
-                            <span className="text-gray-500">Origem:</span>{" "}
-                            <span className="text-gray-100">{v.origemTexto}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Destino:</span>{" "}
-                            <span className="text-gray-100">{v.destinoTexto}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Criada em:</span>{" "}
-                            <span className="text-gray-100">
-                              {new Date(v.criadoEm).toLocaleString()}
+                            <span className="text-[11px] text-yellow-300 border border-yellow-500/20 rounded-full px-2 py-1 bg-yellow-500/10 shrink-0">
+                              PENDENTE
                             </span>
                           </div>
-                        </div>
 
-                        <div className="mt-4 flex items-center gap-2">
-                          <button
-                            disabled={actionId === v.id}
-                            onClick={() => responderViagem(v.id, "ACEITA")}
-                            className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-60"
-                          >
-                            {actionId === v.id ? "A processar..." : "✅ Aceitar"}
-                          </button>
+                          {/* Mapa do percurso da viagem */}
+                          {pedidoOrigem && pedidoDestino ? (
+                            <div className="mb-3">
+                              <PedidoMap
+                                origemCoords={pedidoOrigem}
+                                destinoCoords={pedidoDestino}
+                              />
+                              <div className="mt-1.5 text-[10px] text-gray-600 text-center">
+                                🔵 Passageiro → 🔴 Destino
+                              </div>
+                            </div>
+                          ) : null}
 
-                          <button
-                            disabled={actionId === v.id}
-                            onClick={() => responderViagem(v.id, "REJEITADA")}
-                            className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold bg-red-500/15 text-red-300 border border-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-60"
-                          >
-                            {actionId === v.id ? "A processar..." : "❌ Rejeitar"}
-                          </button>
+                          {/* Texto origem / destino (compacto) */}
+                          <div className="space-y-1.5 text-xs mb-4">
+                            <div className="flex gap-2">
+                              <span className="text-blue-400 shrink-0">📍</span>
+                              <span className="text-gray-300 truncate">{v.origemTexto}</span>
+                            </div>
+                            <div className="flex gap-2">
+                              <span className="text-red-400 shrink-0">🏁</span>
+                              <span className="text-gray-300 truncate">{v.destinoTexto}</span>
+                            </div>
+                          </div>
+
+                          {/* Botões */}
+                          <div className="flex items-center gap-2">
+                            <button
+                              disabled={actionId === v.id}
+                              onClick={() => responderViagem(v.id, "ACEITA")}
+                              className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-60"
+                            >
+                              {actionId === v.id ? "A processar..." : "✅ Aceitar"}
+                            </button>
+                            <button
+                              disabled={actionId === v.id}
+                              onClick={() => responderViagem(v.id, "REJEITADA")}
+                              className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold bg-red-500/15 text-red-300 border border-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-60"
+                            >
+                              {actionId === v.id ? "A processar..." : "❌ Rejeitar"}
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </section>
