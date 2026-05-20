@@ -210,7 +210,7 @@ export default function PassageiroHomePage() {
   // ── Polling do status da viagem ativa ─────────────────────────
   async function verificarStatusViagem(viagemId: string) {
     try {
-      const res = await fetch(`/api/viagens/${viagemId}/status`, { cache: "no-store" });
+      const res = await fetch(`/api/viagens/${viagemId}`, { cache: "no-store" });
       if (!res.ok) return;
 
       const data = await res.json().catch(() => null);
